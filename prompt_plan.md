@@ -85,8 +85,7 @@ Continuamos en la Fase 2. Ahora conectaremos el parser con la persistencia.
     * **Caso C (Sin Cambios):** Actualiza `updated_at` en `pisos`. Retorna "SIN_CAMBIOS".
 4.  Escribe un test unitario (mockeando la llamada a Supabase) que cubra los 3 casos.
 
-Fase 3: El Agente (Navegación)
-Prompt 4: Implementación de Playwright con Stealth
+Prompt 4: Implementación de Playwright con Stealth ✅ COMPLETADO
 
 Objetivo: Navegar la web real esquivando bloqueos básicos.
 Markdown
@@ -112,8 +111,7 @@ Fase 3: El Navegador.
 
 **Importante:** El script debe ser robusto. Si falla una tarjeta, loguea el error y continúa con la siguiente.
 
-Fase 4: Frontend (Next.js & Interfaz)
-Prompt 5: Autenticación y Seguridad
+                Prompt 5: Autenticación y Seguridad
 
 Objetivo: Proteger la aplicación.
 Markdown
