@@ -1,0 +1,46 @@
+name: 🏠 BuscaChozas - Scraping Diario
+
+on:
+  schedule:
+    # Ejecutar a las 9:00 y 20:00 (hora española, UTC+1/+2)
+    - cron: '0 8,19 * * *'  # UTC: 8:00 y 19:00
+  workflow_dispatch:  # Permitir ejecución manual
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  scraping:
+    name: 🔍 Ejecutar Scraper
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: 📥 Checkout código
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 📦 Instalar dependencias
+        run: npm ci
+
+      - name: 🎭 Instalar navegadores Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: 🏃 Ejecutar Scraper
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          NOTIFICATION_EMAIL: ${{ secrets.NOTIFICATION_EMAIL }}
+        run: npx ts-node scraper/index.ts
+
+      - name: 📊 Resumen
+        if: always()
+        run: echo "Scraping completado a las $(date -u '+%Y-%m-%d %H:%M UTC')"

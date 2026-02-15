@@ -18,6 +18,7 @@ import { chromium, Browser, Page } from 'playwright';
 import { parseListPage } from './parser';
 import { procesarPiso, ResultadoProcesamiento } from './dbService';
 import { construirUrlIdealista, esperaAleatoria, logger } from './utils';
+import { notificar } from './notificador';
 import { Tables } from '../lib/database.types';
 import { SupabaseClient } from '@supabase/supabase-js';
 
@@ -242,8 +243,10 @@ async function main() {
     try {
         const resultado = await ejecutarScraping(supabase);
 
+        // Enviar notificaciones si hay novedades
         if (resultado.nuevos.length > 0 || resultado.cambiosPrecio.length > 0) {
-            logger.success('¡Se encontraron novedades! Listo para notificar.');
+            logger.success('¡Se encontraron novedades! Enviando notificaciones...');
+            await notificar(resultado.nuevos, resultado.cambiosPrecio);
         } else {
             logger.info('No hay novedades. Todo igual que en la última ejecución.');
         }

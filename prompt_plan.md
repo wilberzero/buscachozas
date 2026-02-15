@@ -126,7 +126,7 @@ Fase 4: Frontend. Empezamos por la seguridad.
 3.  Si el usuario no tiene sesión activa, redirige a `/login`.
 4.  Asegúrate de configurar correctamente las variables de entorno para el cliente de Supabase (SSR y Client side).
 
-Prompt 6: Dashboard y Visualización (Lista y Mapa)
+Prompt 6: Dashboard y Visualización (Lista y Mapa) ✅ COMPLETADO
 
 Objetivo: Ver los datos recolectados.
 Markdown
