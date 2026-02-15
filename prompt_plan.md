@@ -111,7 +111,7 @@ Fase 3: El Navegador.
 
 **Importante:** El script debe ser robusto. Si falla una tarjeta, loguea el error y continúa con la siguiente.
 
-                Prompt 5: Autenticación y Seguridad
+                Prompt 5: Autenticación y Seguridad ✅ COMPLETADO
 
 Objetivo: Proteger la aplicación.
 Markdown
