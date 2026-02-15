@@ -66,7 +66,7 @@ Pasamos a la Fase 2: El Cerebro del Scraper.
 
 **Nota:** Maneja los errores con gracia (ej: si no hay precio, devuelve 0 o null, no lances excepción).
 
-Prompt 3: Servicio de Base de Datos (Upsert Logic)
+Prompt 3: Servicio de Base de Datos (Upsert Logic) ✅ COMPLETADO
 
 Objetivo: Lógica para detectar si un piso es nuevo o cambió de precio.
 Markdown
