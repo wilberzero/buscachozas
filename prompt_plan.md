@@ -47,7 +47,7 @@ Vamos a iniciar la Fase 1.
 **Entregable:** El SQL ejecutado, la estructura de carpetas inicial sugerida y los tipos TS.
 
 Fase 2: Lógica del Scraper (Backend Puro)
-Prompt 2: Parser HTML con TDD
+Prompt 2: Parser HTML con TDD ✅ COMPLETADO
 
 Objetivo: Crear la lógica de extracción de datos sin tocar el navegador aún.
 Markdown
