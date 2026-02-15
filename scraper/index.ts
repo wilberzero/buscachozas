@@ -236,12 +236,11 @@ export async function ejecutarScraping(client: SupabaseClient): Promise<Resultad
 async function main() {
     logger.info('🏠 Iniciando Burgos Home Finder Scraper...');
 
-    // Cargar cliente de Supabase (en producción, desde las env vars)
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { supabase } = require('../lib/supabase');
+    // Usar cliente admin con service_role key (ignora RLS para INSERT/UPDATE)
+    const { supabaseAdmin } = require('./supabaseAdmin');
 
     try {
-        const resultado = await ejecutarScraping(supabase);
+        const resultado = await ejecutarScraping(supabaseAdmin);
 
         // Enviar notificaciones si hay novedades
         if (resultado.nuevos.length > 0 || resultado.cambiosPrecio.length > 0) {

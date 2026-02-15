@@ -144,7 +144,7 @@ Fase 4: Visualización de Datos.
 4.  Añade un botón para editar la configuración (conecta con `config_busqueda` mediante una Server Action).
 
 Fase 5: Automatización (CI/CD)
-Prompt 7: Notificaciones y GitHub Actions
+Prompt 7: Notificaciones y GitHub Actions ✅ COMPLETADO
 
 Objetivo: Automatizar la ejecución diaria y las alertas.
 Markdown
