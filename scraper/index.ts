@@ -21,6 +21,7 @@ import { construirUrlIdealista, esperaAleatoria, logger } from './utils';
 import { notificar } from './notificador';
 import { Tables } from '../lib/database.types';
 import { SupabaseClient } from '@supabase/supabase-js';
+import { logInicioScraper, logFinScraper } from './logService';
 
 type ConfigBusqueda = Tables<'config_busqueda'>;
 
@@ -239,6 +240,10 @@ async function main() {
     // Usar cliente admin con service_role key (ignora RLS para INSERT/UPDATE)
     const { supabaseAdmin } = require('./supabaseAdmin');
 
+    // 1. Iniciar Log
+    const logId = await logInicioScraper(supabaseAdmin);
+    logger.info(`📝 Log iniciado con ID: ${logId}`);
+
     try {
         const resultado = await ejecutarScraping(supabaseAdmin);
 
@@ -250,9 +255,26 @@ async function main() {
             logger.info('No hay novedades. Todo igual que en la última ejecución.');
         }
 
+        // 2. Finalizar Log (Éxito)
+        await logFinScraper(supabaseAdmin, logId!, {
+            status: 'success',
+            pisos_encontrados: resultado.totalProcesados,
+            pisos_nuevos: resultado.nuevos.length,
+            pisos_actualizados: resultado.cambiosPrecio.length,
+        });
+        logger.info('✅ Log finalizado correctamente');
+
         process.exit(0);
     } catch (error) {
-        logger.error('El scraper falló de forma fatal', error);
+        const mensajeError = error instanceof Error ? error.message : String(error);
+        logger.error('❌ El scraper falló de forma fatal', error);
+
+        // 3. Finalizar Log (Error)
+        await logFinScraper(supabaseAdmin, logId!, {
+            status: 'error',
+            error_message: mensajeError,
+        });
+
         process.exit(1);
     }
 }

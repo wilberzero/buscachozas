@@ -8,6 +8,16 @@ export type PisoParsed = Pick<
     Tables<'pisos'>,
     'titulo' | 'precio' | 'metros' | 'habitaciones' | 'banos' | 'descripcion' | 'url_anuncio' | 'foto_principal' | 'portal_id'
 > & {
-    garaje: boolean;
     trastero: boolean;
 };
+
+export interface ScraperLog {
+    id: string;
+    started_at: string;
+    finished_at?: string;
+    status: 'running' | 'success' | 'error';
+    pisos_encontrados: number;
+    pisos_nuevos: number;
+    pisos_actualizados: number;
+    error_message?: string;
+}

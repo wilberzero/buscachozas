@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
+import ScraperLogs from './components/ScraperLogs';
 
 /**
  * Página principal del dashboard con resumen y navegación.
@@ -45,6 +46,11 @@ export default async function DashboardPage() {
                         Ver pisos →
                     </Link>
                 </div>
+            </div>
+
+            {/* Logs del Scraper */}
+            <div className="pt-6">
+                <ScraperLogs />
             </div>
         </div>
     );
