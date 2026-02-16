@@ -14,7 +14,9 @@
  * 7. Retorna un resumen de resultados
  */
 
-import { chromium, Browser, Page } from 'playwright';
+import { chromium } from 'playwright-extra';
+import stealthPlugin from 'puppeteer-extra-plugin-stealth';
+import { Browser, Page } from 'playwright';
 import { parseListPage } from './parser';
 import { procesarPiso, ResultadoProcesamiento } from './dbService';
 import { construirUrlIdealista, esperaAleatoria, logger } from './utils';
@@ -22,6 +24,9 @@ import { notificar } from './notificador';
 import { Tables } from '../lib/database.types';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { logInicioScraper, logFinScraper } from './logService';
+
+// Activar plugin stealth
+chromium.use(stealthPlugin());
 
 type ConfigBusqueda = Tables<'config_busqueda'>;
 
@@ -55,7 +60,7 @@ async function obtenerConfiguracion(client: SupabaseClient): Promise<ConfigBusqu
 }
 
 /**
- * Configura y lanza el navegador con comportamiento stealth.
+ * Configura y lanza el navegador con comportamiento stealth mejorado.
  */
 async function lanzarNavegador(): Promise<Browser> {
     const browser = await chromium.launch({
@@ -66,30 +71,33 @@ async function lanzarNavegador(): Promise<Browser> {
             '--disable-blink-features=AutomationControlled',
             '--disable-infobars',
             '--window-size=1920,1080',
+            '--start-maximized',
         ],
+        ignoreDefaultArgs: ['--enable-automation'],
     });
 
     return browser;
 }
 
 /**
- * Configura la página del navegador con headers y propiedades anti-detección.
+ * Configura la página del navegador con headers y propiedades anti-detección extra.
  */
 async function configurarPagina(browser: Browser): Promise<Page> {
     const context = await browser.newContext({
-        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
         viewport: { width: 1920, height: 1080 },
         locale: 'es-ES',
         timezoneId: 'Europe/Madrid',
+        deviceScaleFactor: 1,
     });
 
     const page = await context.newPage();
 
-    // Ocultar que somos un bot
+    // Ocultar que somos un bot (capa extra además del stealth plugin)
     await page.addInitScript(() => {
         Object.defineProperty(navigator, 'webdriver', { get: () => false });
-        Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
-        Object.defineProperty(navigator, 'languages', { get: () => ['es-ES', 'es', 'en'] });
+        // @ts-ignore
+        window.navigator.chrome = { runtime: {} };
     });
 
     return page;
@@ -136,7 +144,7 @@ export async function ejecutarScraping(client: SupabaseClient): Promise<Resultad
         logger.info(`URL de búsqueda: ${url}`);
 
         // 3. Lanzar navegador
-        logger.info('Lanzando navegador...');
+        logger.info('Lanzando navegador (Stealth Mode)...');
         browser = await lanzarNavegador();
         const page = await configurarPagina(browser);
         logger.success('Navegador lanzado correctamente');
@@ -150,13 +158,14 @@ export async function ejecutarScraping(client: SupabaseClient): Promise<Resultad
         const hayResultados = await page.$('article[data-adid]');
         if (!hayResultados) {
             logger.warn('⚠️ No se encontraron resultados. Guardando captura de pantalla...');
-            await page.screenshot({ path: 'debug_no_results.png', fullPage: true });
-
-            // También guardar el HTML para analizar
-            const html = await page.content();
-            const fs = require('fs');
-            fs.writeFileSync('debug_no_results.html', html);
-
+            try {
+                await page.screenshot({ path: 'debug_no_results.png', fullPage: true });
+                const html = await page.content();
+                const fs = require('fs');
+                fs.writeFileSync('debug_no_results.html', html);
+            } catch (screenshotError) {
+                logger.error('Error guardando screenshots', screenshotError);
+            }
             return resultado;
         }
 
@@ -210,9 +219,6 @@ export async function ejecutarScraping(client: SupabaseClient): Promise<Resultad
                 });
             }
         }
-
-        // 7. Intentar navegar a la siguiente página (si existe)
-        // TODO: Implementar paginación en futuras iteraciones
 
     } catch (error) {
         const mensaje = error instanceof Error ? error.message : 'Error desconocido';
