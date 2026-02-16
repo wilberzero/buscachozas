@@ -149,7 +149,14 @@ export async function ejecutarScraping(client: SupabaseClient): Promise<Resultad
         // Verificar si hay resultados
         const hayResultados = await page.$('article[data-adid]');
         if (!hayResultados) {
-            logger.warn('No se encontraron resultados en la página. Posible bloqueo o sin resultados.');
+            logger.warn('⚠️ No se encontraron resultados. Guardando captura de pantalla...');
+            await page.screenshot({ path: 'debug_no_results.png', fullPage: true });
+
+            // También guardar el HTML para analizar
+            const html = await page.content();
+            const fs = require('fs');
+            fs.writeFileSync('debug_no_results.html', html);
+
             return resultado;
         }
 

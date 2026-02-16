@@ -42,6 +42,16 @@ jobs:
           NOTIFICATION_EMAIL: ${{ secrets.NOTIFICATION_EMAIL }}
         run: npx tsx scraper/index.ts
 
+      - name: 📸 Guardar Evidencias (Screenshots/HTML)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-evidence
+          path: |
+            *.png
+            *.html
+          retention-days: 3
+
       - name: 📊 Resumen
         if: always()
         run: echo "Scraping completado a las $(date -u '+%Y-%m-%d %H:%M UTC')"
