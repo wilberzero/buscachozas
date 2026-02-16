@@ -9,7 +9,6 @@ export default function LoginPage() {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [mode, setMode] = useState<'login' | 'register'>('login');
     const router = useRouter();
     const supabase = createClient();
 
@@ -19,22 +18,11 @@ export default function LoginPage() {
         setError(null);
 
         try {
-            if (mode === 'login') {
-                const { error } = await supabase.auth.signInWithPassword({
-                    email,
-                    password,
-                });
-                if (error) throw error;
-            } else {
-                const { error } = await supabase.auth.signUp({
-                    email,
-                    password,
-                });
-                if (error) throw error;
-                setError('Revisa tu email para confirmar tu cuenta');
-                setLoading(false);
-                return;
-            }
+            const { error } = await supabase.auth.signInWithPassword({
+                email,
+                password,
+            });
+            if (error) throw error;
 
             router.push('/dashboard');
             router.refresh();
@@ -61,34 +49,12 @@ export default function LoginPage() {
                         BuscaChozas
                     </h1>
                     <p className="text-slate-400 mt-2">
-                        Tu buscador de pisos en Burgos
+                        Acceso exclusivo
                     </p>
                 </div>
 
                 {/* Card de login */}
                 <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl">
-                    {/* Tabs Login/Register */}
-                    <div className="flex bg-white/5 rounded-lg p-1 mb-6">
-                        <button
-                            onClick={() => { setMode('login'); setError(null); }}
-                            className={`flex-1 py-2.5 text-sm font-medium rounded-md transition-all duration-200 ${mode === 'login'
-                                    ? 'bg-white/10 text-white shadow-sm'
-                                    : 'text-slate-400 hover:text-slate-300'
-                                }`}
-                        >
-                            Iniciar Sesión
-                        </button>
-                        <button
-                            onClick={() => { setMode('register'); setError(null); }}
-                            className={`flex-1 py-2.5 text-sm font-medium rounded-md transition-all duration-200 ${mode === 'register'
-                                    ? 'bg-white/10 text-white shadow-sm'
-                                    : 'text-slate-400 hover:text-slate-300'
-                                }`}
-                        >
-                            Registrarse
-                        </button>
-                    </div>
-
                     <form onSubmit={handleSubmit} className="space-y-5">
                         <div>
                             <label htmlFor="email" className="block text-sm font-medium text-slate-300 mb-2">
@@ -123,10 +89,7 @@ export default function LoginPage() {
 
                         {/* Mensaje de error */}
                         {error && (
-                            <div className={`px-4 py-3 rounded-xl text-sm ${error.includes('Revisa tu email')
-                                    ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-300'
-                                    : 'bg-red-500/10 border border-red-500/20 text-red-300'
-                                }`}>
+                            <div className="px-4 py-3 rounded-xl text-sm bg-red-500/10 border border-red-500/20 text-red-300">
                                 {error}
                             </div>
                         )}
@@ -145,7 +108,7 @@ export default function LoginPage() {
                                     Cargando...
                                 </span>
                             ) : (
-                                mode === 'login' ? 'Iniciar Sesión' : 'Crear Cuenta'
+                                'Iniciar Sesión'
                             )}
                         </button>
                     </form>
