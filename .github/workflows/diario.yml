@@ -40,7 +40,7 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           NOTIFICATION_EMAIL: ${{ secrets.NOTIFICATION_EMAIL }}
-        run: npx ts-node scraper/index.ts
+        run: npx tsx scraper/index.ts
 
       - name: 📊 Resumen
         if: always()
