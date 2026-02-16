@@ -1,65 +1,68 @@
-import Image from "next/image";
+import Link from "next/link";
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-indigo-900 via-slate-800 to-black p-4 text-white">
+      <div className="relative flex max-w-4xl flex-col items-center text-center">
+
+        {/* Decorative background blur */}
+        <div className="absolute -top-40 -z-10 h-96 w-96 rounded-full bg-indigo-500/20 blur-3xl filter" />
+        <div className="absolute -bottom-40 -z-10 h-96 w-96 rounded-full bg-blue-500/20 blur-3xl filter" />
+
+        <h1 className="mb-4 text-5xl font-extrabold tracking-tight sm:text-7xl">
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-300">
+            BuscaChozas
+          </span>
+        </h1>
+
+        <p className="mb-8 max-w-2xl text-lg text-slate-300 sm:text-xl">
+          Tu cazador personal de chollos inmobiliarios en Burgos.
+          Scraping automático, alertas en tiempo real y análisis de precios históricos.
+        </p>
+
+        <div className="flex flex-col gap-4 sm:flex-row">
+          <Link
+            href="/login"
+            className="rounded-full bg-blue-600 px-8 py-3 text-lg font-semibold transition hover:bg-blue-500 hover:shadow-lg hover:shadow-blue-500/25"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            Iniciar Sesión
+          </Link>
+          <Link
+            href="/dashboard"
+            className="rounded-full border border-slate-600 bg-slate-800/50 px-8 py-3 text-lg font-semibold transition hover:bg-slate-700 hover:border-slate-500 backdrop-blur-sm"
           >
-            Documentation
-          </a>
+            Ir al Dashboard
+          </Link>
         </div>
-      </main>
+
+        <div className="mt-16 grid grid-cols-1 gap-8 text-left sm:grid-cols-3">
+          <FeatureCard
+            title="🔍 Scraping Diario"
+            description="Revisión automática de Idealista a las 9:00 y 20:00 h."
+            icon="🤖"
+          />
+          <FeatureCard
+            title="🔔 Alertas Reales"
+            description="Notificaciones instantáneas en Telegram y Email."
+            icon="⚡"
+          />
+          <FeatureCard
+            title="📉 Histórico"
+            description="Detecta bajadas de precio y oportunidades únicas."
+            icon="📊"
+          />
+        </div>
+      </div>
+    </main>
+  );
+}
+
+function FeatureCard({ title, description, icon }: { title: string; description: string; icon: string }) {
+  return (
+    <div className="rounded-2xl border border-slate-700 bg-slate-800/30 p-6 backdrop-blur-sm transition hover:border-slate-600 hover:bg-slate-800/50">
+      <div className="mb-2 text-3xl">{icon}</div>
+      <h3 className="mb-2 text-xl font-bold text-slate-100">{title}</h3>
+      <p className="text-sm text-slate-400">{description}</p>
     </div>
   );
 }
