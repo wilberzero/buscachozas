@@ -14,6 +14,17 @@
  * 7. Retorna un resumen de resultados
  */
 
+// Cargar variables de entorno si estamos en local
+if (!process.env.CI) {
+    try {
+        require('dotenv').config({ path: '.env.local' });
+        // Fallback a .env si no existe .env.local
+        require('dotenv').config();
+    } catch (e) {
+        // Ignorar si falla, asumimos que las variables están en el entorno
+    }
+}
+
 import { chromium } from 'playwright-extra';
 import stealthPlugin from 'puppeteer-extra-plugin-stealth';
 import { Browser, Page } from 'playwright';
