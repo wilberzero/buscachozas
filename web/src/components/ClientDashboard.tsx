@@ -86,7 +86,10 @@ export default function ClientDashboard({ properties }: { properties: any[] }) {
             <div className="bg-blue-600 p-2 rounded-2xl shadow-lg shadow-blue-200">
               <LayoutGrid className="text-white w-6 h-6" />
             </div>
-            <h1 className="text-2xl font-black text-slate-800 tracking-tight">BuscaChozas</h1>
+            <div className="flex items-baseline gap-2">
+              <h1 className="text-2xl font-black text-slate-800 tracking-tight">BuscaChozas</h1>
+              <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md tracking-widest">v1.0.1</span>
+            </div>
           </div>
           
           <div className="flex items-center gap-2">
