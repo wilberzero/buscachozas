@@ -88,7 +88,7 @@ export default function ClientDashboard({ properties }: { properties: any[] }) {
             </div>
             <div className="flex items-baseline gap-2">
               <h1 className="text-2xl font-black text-slate-800 tracking-tight">BuscaChozas</h1>
-              <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md tracking-widest">v1.0.2</span>
+              <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md tracking-widest">v1.0.3</span>
             </div>
           </div>
           
@@ -185,17 +185,17 @@ export default function ClientDashboard({ properties }: { properties: any[] }) {
       )}
 
       {/* SELECTOR DE VISTA CENTRALIZADO */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
-        <div className="flex bg-slate-200/50 rounded-3xl p-1.5 w-fit mx-auto sm:mx-0 shadow-inner">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 sm:mt-8">
+        <div className="flex bg-slate-200/60 rounded-full p-1.5 w-full sm:w-fit mx-auto sm:mx-0 shadow-inner">
           <button 
             onClick={() => setView('list')}
-            className={`flex items-center gap-2 px-10 py-3 rounded-[24px] text-xs font-black tracking-widest transition-all duration-300 ${view === 'list' ? 'bg-white text-blue-600 shadow-xl' : 'text-slate-500 hover:text-slate-800'}`}
+            className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 sm:px-10 py-3 rounded-full text-[10px] sm:text-xs font-black tracking-widest transition-all duration-300 ${view === 'list' ? 'bg-white text-blue-700 shadow-md' : 'text-slate-600 hover:text-slate-900'}`}
           >
             <List className="w-4 h-4" /> LISTADO
           </button>
           <button 
             onClick={() => setView('map')}
-            className={`flex items-center gap-2 px-10 py-3 rounded-[24px] text-xs font-black tracking-widest transition-all duration-300 ${view === 'map' ? 'bg-white text-blue-600 shadow-xl' : 'text-slate-500 hover:text-slate-800'}`}
+            className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 sm:px-10 py-3 rounded-full text-[10px] sm:text-xs font-black tracking-widest transition-all duration-300 ${view === 'map' ? 'bg-white text-blue-700 shadow-md' : 'text-slate-600 hover:text-slate-900'}`}
           >
             <MapIcon className="w-4 h-4" /> MAPA
           </button>
@@ -234,80 +234,80 @@ export default function ClientDashboard({ properties }: { properties: any[] }) {
               const diff = currentPrice - lastPrice
 
               return (
-                <div key={piso.id} className="bg-white rounded-[48px] shadow-2xl shadow-slate-200 border border-slate-100 overflow-hidden flex flex-col relative group hover:-translate-y-4 transition-all duration-500 ease-out">
-                  <button onClick={() => toggleFavorite(piso.id)} className="absolute top-8 right-8 z-10 p-4 bg-white/95 backdrop-blur-xl rounded-[28px] shadow-2xl border border-slate-100 hover:scale-110 active:scale-90 transition-all">
-                    <Heart className={`w-6 h-6 ${isFav ? 'fill-rose-500 text-rose-500' : 'text-slate-200'}`} />
+                <div key={piso.id} className="bg-white rounded-3xl sm:rounded-[40px] shadow-xl shadow-slate-200/50 border border-slate-200 overflow-hidden flex flex-col relative group sm:hover:-translate-y-2 transition-all duration-300 ease-out">
+                  <button onClick={() => toggleFavorite(piso.id)} className="absolute top-4 right-4 sm:top-6 sm:right-6 z-10 p-3 sm:p-4 bg-white/95 backdrop-blur-xl rounded-2xl shadow-lg border border-slate-100 hover:scale-110 active:scale-90 transition-all">
+                    <Heart className={`w-5 h-5 sm:w-6 sm:h-6 ${isFav ? 'fill-rose-600 text-rose-600' : 'text-slate-300 group-hover:text-rose-400'}`} />
                   </button>
 
-                  <div className="p-10 flex-grow">
-                    <div className="flex justify-between items-center mb-8 pr-16">
-                      <span className="px-5 py-2 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] bg-slate-900 text-white shadow-xl shadow-slate-300">{piso.type || 'Choza'}</span>
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-4 py-2 rounded-2xl border border-slate-100">
+                  <div className="p-6 sm:p-8 flex-grow">
+                    <div className="flex justify-between items-center mb-4 pr-12 sm:pr-16">
+                      <span className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl sm:rounded-2xl text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] bg-slate-900 text-white shadow-md shadow-slate-300">{piso.type || 'Choza'}</span>
+                      <span className="text-[9px] sm:text-[10px] font-bold text-slate-600 uppercase tracking-wider bg-slate-100 px-2 py-1 sm:px-3 sm:py-1.5 rounded-xl sm:rounded-2xl border border-slate-200">
                         {formatDistanceToNow(new Date(piso.last_seen_at), { addSuffix: true, locale: es })}
                       </span>
                     </div>
                     
-                    <h3 className="text-2xl font-black text-slate-900 leading-[1.2] mb-4 group-hover:text-blue-600 transition-colors line-clamp-2 min-h-[4rem] tracking-tight">{piso.title}</h3>
+                    <h3 className="text-lg sm:text-xl font-black text-slate-900 leading-tight mb-3 group-hover:text-blue-700 transition-colors line-clamp-2 min-h-[3rem] tracking-tight">{piso.title}</h3>
                     
-                    <div className="flex items-start gap-2 text-slate-400 mb-10 font-bold truncate text-sm">
-                      <MapPin className="w-5 h-5 mt-0.5 flex-shrink-0 text-blue-400" />
-                      {piso.address} {piso.neighborhood ? `· ${piso.neighborhood}` : ''}
+                    <div className="flex items-start gap-2 text-slate-500 mb-5 font-bold text-sm">
+                      <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0 text-blue-600" />
+                      <span className="line-clamp-2">{piso.address} {piso.neighborhood ? `· ${piso.neighborhood}` : ''}</span>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-6 mb-10">
-                      <div className="bg-slate-50/80 p-6 rounded-[32px] border border-slate-100 flex items-center gap-5 group-hover:bg-white group-hover:border-blue-100 group-hover:shadow-sm transition-all">
-                        <div className="bg-white p-4 rounded-2xl shadow-sm text-blue-600"><BedDouble className="w-6 h-6" /></div>
-                        <div><p className="text-[10px] text-slate-400 font-black uppercase tracking-tighter opacity-60">Hab</p><p className="text-xl font-black text-slate-800">{piso.rooms}</p></div>
+                    <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6">
+                      <div className="bg-slate-50 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 flex items-center gap-3 sm:gap-4 group-hover:bg-white group-hover:border-blue-200 group-hover:shadow-sm transition-all">
+                        <div className="bg-white p-2.5 sm:p-3 rounded-xl shadow-sm text-blue-600"><BedDouble className="w-5 h-5 sm:w-6 sm:h-6" /></div>
+                        <div><p className="text-[9px] sm:text-[10px] text-slate-500 font-black uppercase tracking-tighter">Hab</p><p className="text-lg sm:text-xl font-black text-slate-800">{piso.rooms}</p></div>
                       </div>
-                      <div className="bg-slate-50/80 p-6 rounded-[32px] border border-slate-100 flex items-center gap-5 group-hover:bg-white group-hover:border-blue-100 group-hover:shadow-sm transition-all">
-                        <div className="bg-white p-4 rounded-2xl shadow-sm text-blue-600"><Scaling className="w-6 h-6" /></div>
-                        <div><p className="text-[10px] text-slate-400 font-black uppercase tracking-tighter opacity-60">Área</p><p className="text-xl font-black text-slate-800">{piso.size_m2}<span className="text-xs font-bold text-slate-400 ml-1">m²</span></p></div>
+                      <div className="bg-slate-50 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 flex items-center gap-3 sm:gap-4 group-hover:bg-white group-hover:border-blue-200 group-hover:shadow-sm transition-all">
+                        <div className="bg-white p-2.5 sm:p-3 rounded-xl shadow-sm text-blue-600"><Scaling className="w-5 h-5 sm:w-6 sm:h-6" /></div>
+                        <div><p className="text-[9px] sm:text-[10px] text-slate-500 font-black uppercase tracking-tighter">Área</p><p className="text-lg sm:text-xl font-black text-slate-800">{piso.size_m2}<span className="text-xs font-bold text-slate-500 ml-1">m²</span></p></div>
                       </div>
                     </div>
 
-                    <div className="bg-slate-900 rounded-[36px] p-8 text-white relative overflow-hidden cursor-pointer hover:bg-slate-800 transition-all shadow-2xl shadow-blue-900/30 group/price" onClick={() => toggleExpandPrice(piso.id)}>
+                    <div className="bg-slate-900 rounded-3xl sm:rounded-[36px] p-6 sm:p-8 text-white relative overflow-hidden cursor-pointer hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/20 group/price" onClick={() => toggleExpandPrice(piso.id)}>
                       <div className="flex justify-between items-end relative z-10">
-                        <div>
-                          <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-3 opacity-80">Precio de Mercado</p>
-                          <div className="flex items-center gap-4">
-                            <span className="text-4xl font-black tracking-tighter">{currentPrice.toLocaleString('es-ES')}€</span>
+                        <div className="flex-1">
+                          <p className="text-[9px] sm:text-[10px] font-bold text-blue-300 uppercase tracking-widest mb-1 sm:mb-2">Precio de Mercado</p>
+                          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                            <span className="text-2xl sm:text-3xl font-black tracking-tighter">{currentPrice.toLocaleString('es-ES')}€</span>
                             {diff !== 0 && (
-                              <div className={`flex items-center text-xs font-black px-3 py-2 rounded-2xl ${diff < 0 ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-900/40' : 'bg-rose-500 text-white shadow-lg shadow-rose-900/40'}`}>
-                                {diff < 0 ? <TrendingDown className="w-4 h-4 mr-1.5" /> : <TrendingUp className="w-4 h-4 mr-1.5" />}
+                              <div className={`flex items-center text-[10px] sm:text-xs font-black px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl ${diff < 0 ? 'bg-emerald-600 text-white shadow-md' : 'bg-rose-600 text-white shadow-md'}`}>
+                                {diff < 0 ? <TrendingDown className="w-3 h-3 sm:w-4 sm:h-4 mr-1" /> : <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />}
                                 {Math.abs(diff).toLocaleString('es-ES')}€
                               </div>
                             )}
                           </div>
                         </div>
-                        <div className="bg-white/10 p-3 rounded-full backdrop-blur-sm group-hover/price:translate-y-[-4px] transition-transform shadow-inner">
-                          {isExpanded ? <ChevronUp className="w-6 h-6 text-slate-300" /> : <ChevronDown className="w-6 h-6 text-slate-300" />}
+                        <div className="bg-white/10 p-2 sm:p-3 rounded-full backdrop-blur-sm group-hover/price:-translate-y-1 transition-transform ml-2 flex-shrink-0">
+                          {isExpanded ? <ChevronUp className="w-5 h-5 sm:w-6 sm:h-6 text-slate-300" /> : <ChevronDown className="w-5 h-5 sm:w-6 sm:h-6 text-slate-300" />}
                         </div>
                       </div>
-                      <div className="absolute bottom-0 left-0 right-0 h-16 opacity-40 pointer-events-none">
+                      <div className="absolute bottom-0 left-0 right-0 h-12 sm:h-16 opacity-40 pointer-events-none">
                         <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={sortedHist}><Line type="monotone" dataKey="price" stroke="#3b82f6" strokeWidth={6} dot={false} animationDuration={2000} /></LineChart>
+                          <LineChart data={sortedHist}><Line type="monotone" dataKey="price" stroke="#3b82f6" strokeWidth={4} dot={false} animationDuration={1000} /></LineChart>
                         </ResponsiveContainer>
                       </div>
                     </div>
 
                     {isExpanded && (
-                      <div className="mt-6 space-y-3 animate-in slide-in-from-top-10 duration-500">
+                      <div className="mt-4 space-y-2 animate-in slide-in-from-top-4 duration-500">
                         {[...sortedHist].reverse().map((h: any, idx) => (
-                          <div key={idx} className="flex justify-between items-center px-6 py-5 bg-slate-50 rounded-[24px] border border-slate-100 hover:border-blue-200 hover:bg-white transition-all shadow-sm group/hist">
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{format(new Date(h.recorded_at), "dd MMMM yyyy", { locale: es })}</span>
-                            <span className="text-base font-black text-slate-800 group-hover/hist:text-blue-600 transition-colors">{h.price.toLocaleString('es-ES')}€</span>
+                          <div key={idx} className="flex justify-between items-center px-4 py-3 sm:px-6 sm:py-4 bg-slate-50 rounded-2xl sm:rounded-[24px] border border-slate-200 hover:border-blue-300 hover:bg-white transition-all shadow-sm group/hist">
+                            <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest">{format(new Date(h.recorded_at), "dd MMMM yyyy", { locale: es })}</span>
+                            <span className="text-sm sm:text-base font-black text-slate-800 group-hover/hist:text-blue-700 transition-colors">{h.price.toLocaleString('es-ES')}€</span>
                           </div>
                         ))}
                       </div>
                     )}
                   </div>
                   
-                  <div className="px-10 py-8 bg-slate-50/50 border-t border-slate-100 flex justify-between items-center group/footer">
-                     <div className="flex flex-col">
-                       <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 opacity-70">Inmobiliaria</span>
-                       <span className="text-sm font-black text-slate-700 truncate w-48 tracking-tight">{piso.advertiser || 'Particular'}</span>
+                  <div className="px-6 py-5 sm:px-8 sm:py-6 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 group/footer">
+                     <div className="flex flex-col flex-1 min-w-0 w-full sm:w-auto">
+                       <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-0.5">Inmobiliaria</span>
+                       <span className="text-xs sm:text-sm font-black text-slate-800 truncate w-full tracking-tight">{piso.advertiser || 'Particular'}</span>
                      </div>
-                     <a href={piso.url} target="_blank" rel="noopener noreferrer" className="bg-blue-600 hover:bg-blue-700 text-white font-black px-8 py-5 rounded-[28px] text-[11px] tracking-[0.2em] transition-all duration-300 flex items-center gap-4 shadow-2xl shadow-blue-500/25 active:scale-95 hover:shadow-blue-500/50">VER EN PORTAL <ArrowRight className="w-5 h-5 group-hover/footer:translate-x-2 transition-transform" /></a>
+                     <a href={piso.url} target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto text-center bg-blue-700 hover:bg-blue-800 text-white font-black px-5 py-3.5 sm:px-6 sm:py-4 rounded-2xl text-[10px] sm:text-[11px] tracking-[0.1em] sm:tracking-[0.2em] transition-all duration-300 flex items-center justify-center gap-2 sm:gap-3 shadow-lg shadow-blue-700/30 active:scale-95 hover:shadow-blue-700/50 flex-shrink-0">VER EN PORTAL <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover/footer:translate-x-1 transition-transform" /></a>
                   </div>
                 </div>
               )
