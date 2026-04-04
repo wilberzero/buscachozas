@@ -46,13 +46,18 @@ class IdealistaScraperSupabase:
                 return None, None
             
             query = f"{clean_addr}, Burgos, Spain"
-            res = requests.get(f"https://nominatim.openstreetmap.org/search?format=json&q={requests.utils.quote(query)}&limit=1", timeout=10)
-            data = res.json()
-            if data and len(data) > 0:
-                coords = (float(data[0]['lat']), float(data[0]['lon']))
-                self.geocode_cache[address] = coords
-                time.sleep(1.1) # Respetar rate limit de Nominatim
-                return coords
+            headers = {"User-Agent": "BuscaChozasBot/1.0 (contacto@tudominio.com)"}
+            res = requests.get(f"https://nominatim.openstreetmap.org/search?format=json&q={requests.utils.quote(query)}&limit=1", headers=headers, timeout=10)
+            
+            if res.status_code == 200:
+                data = res.json()
+                if data and len(data) > 0:
+                    coords = (float(data[0]['lat']), float(data[0]['lon']))
+                    self.geocode_cache[address] = coords
+                    time.sleep(1.1) # Respetar rate limit de Nominatim
+                    return coords
+            else:
+                print(f"[!] Error de Nominatim {res.status_code} para {address}")
         except Exception as e:
             print(f"[!] Error geocoding {address}: {e}")
         
