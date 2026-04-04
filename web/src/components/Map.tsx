@@ -1,7 +1,6 @@
 'use client'
 
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
-import 'leaflet/dist/leaflet.css'
 import { useEffect, useState } from 'react'
 import L from 'leaflet'
 import { BedDouble, Scaling, User, ExternalLink, Euro, MapPin } from 'lucide-react'
