@@ -27,35 +27,89 @@ function ResizeMap() {
   return null
 }
 
-const neighborhoodCoords: Record<string, [number, number]> = {
-  'Villatoro': [42.3789, -3.6969],
-  'Gamonal': [42.3508, -3.6686],
-  'Villafría': [42.3614, -3.6265],
-  'Villimar': [42.3650, -3.6650],
-  'Casco Antiguo': [42.3400, -3.7040],
-  'Fuentecillas': [42.3450, -3.7250],
-  'San Pedro': [42.3420, -3.7150],
-  'Reyes Católicos': [42.3480, -3.6980],
-  'Illera': [42.3580, -3.6920],
-  'Plantío': [42.3450, -3.6820],
-  'San Agustín': [42.3350, -3.6980],
-  'Universidad': [42.3380, -3.7180]
+const BURGOS_CENTER: [number, number] = [42.3439, -3.6969]
+
+// Función asíncrona para geocodificar usando Nominatim con caché en localStorage
+async function geocodeAddress(address: string, id: string): Promise<[number, number] | null> {
+  if (!address) return null;
+  const cacheKey = `geo_${id}`
+  const cached = localStorage.getItem(cacheKey)
+  if (cached) return JSON.parse(cached)
+
+  try {
+    const query = `${address.replace(/[\dººª-]/g, '').trim()}, Burgos, Spain`
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`)
+    const data = await res.json()
+    if (data && data.length > 0) {
+      const coords: [number, number] = [parseFloat(data[0].lat), parseFloat(data[0].lon)]
+      localStorage.setItem(cacheKey, JSON.stringify(coords))
+      return coords
+    }
+  } catch (e) {
+    console.error('Error geocoding', address, e)
+  }
+  
+  // Guardar un valor nulo para no volver a intentar fallos
+  localStorage.setItem(cacheKey, JSON.stringify(null))
+  return null
 }
 
 export default function Map({ properties }: { properties: any[] }) {
   const [isMounted, setIsMounted] = useState(false)
+  const [coordsMap, setCoordsMap] = useState<Record<string, [number, number]>>({})
 
   useEffect(() => {
     setIsMounted(true)
   }, [])
 
-  if (!isMounted) return <div className="h-[650px] bg-slate-100 animate-pulse rounded-[40px] flex items-center justify-center text-slate-400 font-bold">Cargando mapa interactivo...</div>
+  useEffect(() => {
+    if (!isMounted) return;
+    
+    // Función para procesar en lotes con retraso para respetar límite de Nominatim (1 req/sec)
+    const processGeocoding = async () => {
+      const newCoords = { ...coordsMap }
+      let index = 0;
+      
+      for (const piso of properties) {
+        if (coordsMap[piso.id]) continue; // Ya lo tenemos en memoria
+        
+        const fullAddr = `${piso.address || ''} ${piso.neighborhood || ''}`.trim()
+        if (fullAddr) {
+          const cached = localStorage.getItem(`geo_${piso.id}`)
+          if (cached) {
+            const parsed = JSON.parse(cached)
+            if (parsed) {
+               newCoords[piso.id] = parsed
+               continue;
+            }
+          } else {
+             // Retraso intencionado de 1 segundo entre peticiones a Nominatim
+             await new Promise(r => setTimeout(r, 1100))
+             const result = await geocodeAddress(fullAddr, piso.id)
+             if (result) {
+               newCoords[piso.id] = result
+               // Actualizar estado por cada nuevo para que aparezca fluidamente
+               setCoordsMap(prev => ({ ...prev, [piso.id]: result }))
+             }
+          }
+        }
+        index++;
+        // Actualizar el estado por lotes de los cacheados
+        if (index % 10 === 0) {
+           setCoordsMap({ ...newCoords })
+        }
+      }
+      setCoordsMap(newCoords)
+    }
 
-  const center: [number, number] = [42.3439, -3.6969]
+    processGeocoding()
+  }, [properties, isMounted])
+
+  if (!isMounted) return <div className="h-[650px] bg-slate-100 animate-pulse rounded-[40px] flex items-center justify-center text-slate-400 font-bold">Cargando mapa interactivo...</div>
 
   return (
     <div className="h-[650px] w-full rounded-[40px] overflow-hidden border-8 border-white shadow-2xl relative z-0 mt-4 leaflet-container-fix">
-      <MapContainer center={center} zoom={13} scrollWheelZoom={true} style={{ height: '100%', width: '100%', minHeight: '650px' }}>
+      <MapContainer center={BURGOS_CENTER} zoom={13} scrollWheelZoom={true} style={{ height: '100%', width: '100%', minHeight: '650px' }}>
         <ResizeMap />
         <TileLayer
           attribution='&copy; OpenStreetMap'
@@ -63,15 +117,11 @@ export default function Map({ properties }: { properties: any[] }) {
         />
         
         {properties.map((piso) => {
-          let pos: [number, number] = [center[0] + (Math.random() - 0.5) * 0.02, center[1] + (Math.random() - 0.5) * 0.02]
-          const searchStr = ((piso.neighborhood || "") + " " + (piso.address || "") + " " + (piso.title || "")).toLowerCase()
-          
-          for (const [name, coord] of Object.entries(neighborhoodCoords)) {
-            if (searchStr.includes(name.toLowerCase())) {
-              pos = [coord[0] + (Math.random() - 0.5) * 0.008, coord[1] + (Math.random() - 0.5) * 0.008]
-              break
-            }
-          }
+          // Si no tiene coords reales, usar una aproximación aleatoria sobre el centro para que no se superpongan
+          const pos: [number, number] = coordsMap[piso.id] || [
+            BURGOS_CENTER[0] + (Math.random() - 0.5) * 0.04, 
+            BURGOS_CENTER[1] + (Math.random() - 0.5) * 0.04
+          ]
           
           const sortedHistory = [...(piso.price_history || [])].sort((a: any, b: any) => 
             new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime()
