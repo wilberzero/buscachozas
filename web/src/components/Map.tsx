@@ -5,17 +5,6 @@ import { useEffect, useState } from 'react'
 import L from 'leaflet'
 import { BedDouble, Scaling, User, ExternalLink, Euro, MapPin } from 'lucide-react'
 
-// Fix para los iconos de Leaflet
-const customIcon = new L.Icon({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41]
-})
-
 // Componente interno para forzar el re-escalado del mapa y evitar barras blancas
 function ResizeMap() {
   const map = useMap()
@@ -107,6 +96,22 @@ export default function Map({ properties }: { properties: any[] }) {
 
   if (!isMounted) return <div className="h-[650px] bg-slate-100 animate-pulse rounded-[40px] flex items-center justify-center text-slate-400 font-bold">Cargando mapa interactivo...</div>
 
+  // Función para crear un pin HTML personalizado basado en el precio
+  const createPriceIcon = (price: number) => {
+    const priceStr = price >= 1000 ? `${(price / 1000).toFixed(0)}k` : price.toString();
+    
+    return L.divIcon({
+      className: 'bg-transparent border-none',
+      html: `<div style="background-color: #1d4ed8; color: white; padding: 4px 8px; border-radius: 999px; font-weight: 900; font-size: 11px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.2); border: 2px solid white; white-space: nowrap; display: inline-block;">
+               ${priceStr}€
+             </div>
+             <div style="width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 6px solid white; margin: -2px auto 0 auto; filter: drop-shadow(0 2px 1px rgba(0,0,0,0.1));"></div>`,
+      iconSize: [48, 30], // Ancho y alto aproximado del div
+      iconAnchor: [24, 30], // Anclado en el centro inferior (la punta de la flecha)
+      popupAnchor: [0, -32] // El popup se abre justo encima
+    });
+  }
+
   return (
     <div className="h-[650px] w-full rounded-[40px] overflow-hidden border-8 border-white shadow-2xl relative z-0 mt-4 leaflet-container-fix">
       <MapContainer center={BURGOS_CENTER} zoom={13} scrollWheelZoom={true} style={{ height: '100%', width: '100%', minHeight: '650px' }}>
@@ -129,7 +134,7 @@ export default function Map({ properties }: { properties: any[] }) {
           const precioActual = sortedHistory[0]?.price || 0
 
           return (
-            <Marker key={piso.id} position={pos} icon={customIcon}>
+            <Marker key={piso.id} position={pos} icon={createPriceIcon(precioActual)}>
               <Popup className="custom-popup-wide">
                 <div className="p-3 w-64">
                   <div className="flex justify-between items-start mb-2">
