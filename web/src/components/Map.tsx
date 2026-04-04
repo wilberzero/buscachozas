@@ -56,20 +56,7 @@ export default function Map({ properties }: { properties: any[] }) {
 
   return (
     <div className="h-[650px] w-full rounded-[40px] overflow-hidden border-8 border-white shadow-2xl relative z-0 mt-4 leaflet-container-fix">
-      {/* Estilo local para arreglar las líneas blancas en los cuadros del mapa */}
-      <style jsx global>{`
-        .leaflet-container-fix img.leaflet-tile {
-          max-width: none !important;
-          max-height: none !important;
-        }
-        .leaflet-container {
-          height: 100% !important;
-          width: 100% !important;
-          background: #f8fafc !important;
-        }
-      `}</style>
-
-      <MapContainer center={center} zoom={13} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
+      <MapContainer center={center} zoom={13} scrollWheelZoom={true} style={{ height: '100%', width: '100%', minHeight: '650px' }}>
         <ResizeMap />
         <TileLayer
           attribution='&copy; OpenStreetMap'
