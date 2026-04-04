@@ -18,6 +18,21 @@ function ResizeMap() {
 
 const BURGOS_CENTER: [number, number] = [42.3439, -3.6969]
 
+const neighborhoodCoords: Record<string, [number, number]> = {
+  'Villatoro': [42.3789, -3.6969],
+  'Gamonal': [42.3508, -3.6686],
+  'Villafría': [42.3614, -3.6265],
+  'Villimar': [42.3650, -3.6650],
+  'Casco Antiguo': [42.3400, -3.7040],
+  'Fuentecillas': [42.3450, -3.7250],
+  'San Pedro': [42.3420, -3.7150],
+  'Reyes Católicos': [42.3480, -3.6980],
+  'Illera': [42.3580, -3.6920],
+  'Plantío': [42.3450, -3.6820],
+  'San Agustín': [42.3350, -3.6980],
+  'Universidad': [42.3380, -3.7180]
+}
+
 // Función asíncrona para geocodificar usando Nominatim con caché en localStorage
 async function geocodeAddress(address: string, id: string): Promise<[number, number] | null> {
   if (!address) return null;
@@ -134,14 +149,26 @@ export default function Map({ properties }: { properties: any[] }) {
         />
         
         {properties.map((piso) => {
-          // Generador aleatorio fijo para este piso concreto
-          const randomFunc = seededRandom(piso.id)
+          // Si no tiene coords reales, usar el centro del barrio exacto, NO una posición aleatoria inventada
+          let fallbackPos = BURGOS_CENTER;
+          const searchStr = ((piso.neighborhood || "") + " " + (piso.address || "") + " " + (piso.title || "")).toLowerCase()
           
-          // Si no tiene coords reales, usar una aproximación "aleatoria" pero FIJA sobre el centro
-          const pos: [number, number] = coordsMap[piso.id] || [
-            BURGOS_CENTER[0] + (randomFunc() - 0.5) * 0.04, 
-            BURGOS_CENTER[1] + (randomFunc() - 0.5) * 0.04
-          ]
+          for (const [name, coord] of Object.entries(neighborhoodCoords)) {
+            if (searchStr.includes(name.toLowerCase())) {
+              fallbackPos = coord;
+              break;
+            }
+          }
+
+          // Usamos un micro-desplazamiento basado en ID (apenas 5-10 metros)
+          // SOLO para evitar que dos pisos en el mismo edificio queden 100% solapados e invisibles.
+          // Es un desplazamiento determinista (siempre el mismo para ese piso) y minúsculo, no inventa barrios enteros.
+          const randomFunc = seededRandom(piso.id)
+          const offset = 0.0001; // ~11 metros
+          
+          const pos: [number, number] = coordsMap[piso.id] 
+            ? [coordsMap[piso.id][0] + (randomFunc() - 0.5) * offset, coordsMap[piso.id][1] + (randomFunc() - 0.5) * offset]
+            : [fallbackPos[0] + (randomFunc() - 0.5) * offset, fallbackPos[1] + (randomFunc() - 0.5) * offset]
           
           const sortedHistory = [...(piso.price_history || [])].sort((a: any, b: any) => 
             new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime()
