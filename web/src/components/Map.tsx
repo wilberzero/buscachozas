@@ -36,12 +36,19 @@ const neighborhoodCoords: Record<string, [number, number]> = {
 // Función asíncrona para geocodificar usando Nominatim con caché en localStorage
 async function geocodeAddress(address: string, id: string): Promise<[number, number] | null> {
   if (!address) return null;
-  const cacheKey = `geo_${id}`
+  const cacheKey = `geo_v2_${id}` // Nueva versión de caché para no usar los datos rotos anteriores
   const cached = localStorage.getItem(cacheKey)
   if (cached) return JSON.parse(cached)
 
   try {
-    const query = `${address.replace(/[\dººª-]/g, '').trim()}, Burgos, Spain`
+    // Limpiamos la dirección pero MANTENEMOS los números de portal. 
+    // Quitamos º, ª, s/n, y separamos por coma para quedarnos solo con la calle pura
+    let cleanAddress = address.split(',')[0].replace(/[ºª]/g, '').replace(/s\/n/gi, '').trim();
+    
+    // Si la dirección es muy genérica, evitamos buscar para que directamente use el fallback del barrio
+    if (cleanAddress.toLowerCase().includes('barrio') && cleanAddress.length < 15) return null;
+
+    const query = `${cleanAddress}, Burgos, Spain`
     const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`)
     const data = await res.json()
     if (data && data.length > 0) {
@@ -69,17 +76,18 @@ export default function Map({ properties }: { properties: any[] }) {
   useEffect(() => {
     if (!isMounted) return;
     
-    // Función para procesar en lotes con retraso para respetar límite de Nominatim (1 req/sec)
     const processGeocoding = async () => {
       const newCoords = { ...coordsMap }
       let index = 0;
       
       for (const piso of properties) {
-        if (coordsMap[piso.id]) continue; // Ya lo tenemos en memoria
+        if (coordsMap[piso.id]) continue;
         
-        const fullAddr = `${piso.address || ''} ${piso.neighborhood || ''}`.trim()
-        if (fullAddr) {
-          const cached = localStorage.getItem(`geo_${piso.id}`)
+        // Pasamos SOLO la dirección (address) al geocodificador. El barrio lo confunde.
+        const streetAddr = piso.address || '';
+        
+        if (streetAddr) {
+          const cached = localStorage.getItem(`geo_v2_${piso.id}`)
           if (cached) {
             const parsed = JSON.parse(cached)
             if (parsed) {
@@ -87,18 +95,15 @@ export default function Map({ properties }: { properties: any[] }) {
                continue;
             }
           } else {
-             // Retraso intencionado de 1 segundo entre peticiones a Nominatim
              await new Promise(r => setTimeout(r, 1100))
-             const result = await geocodeAddress(fullAddr, piso.id)
+             const result = await geocodeAddress(streetAddr, piso.id)
              if (result) {
                newCoords[piso.id] = result
-               // Actualizar estado por cada nuevo para que aparezca fluidamente
                setCoordsMap(prev => ({ ...prev, [piso.id]: result }))
              }
           }
         }
         index++;
-        // Actualizar el estado por lotes de los cacheados
         if (index % 10 === 0) {
            setCoordsMap({ ...newCoords })
         }
@@ -160,13 +165,14 @@ export default function Map({ properties }: { properties: any[] }) {
             }
           }
 
-          // Usamos un micro-desplazamiento basado en ID (apenas 5-10 metros)
-          // SOLO para evitar que dos pisos en el mismo edificio queden 100% solapados e invisibles.
-          // Es un desplazamiento determinista (siempre el mismo para ese piso) y minúsculo, no inventa barrios enteros.
+          // Usamos un micro-desplazamiento basado en ID.
+          // Si el piso está geocodificado bien, el offset es mínimo (~10m) para no pisar a vecinos del mismo portal.
+          // Si el piso usa el fallback del barrio, el offset es grande (~400m) para dispersarlos visualmente por la zona.
           const randomFunc = seededRandom(piso.id)
-          const offset = 0.0001; // ~11 metros
+          const isGeocoded = !!coordsMap[piso.id]
+          const offset = isGeocoded ? 0.0001 : 0.004; 
           
-          const pos: [number, number] = coordsMap[piso.id] 
+          const pos: [number, number] = isGeocoded 
             ? [coordsMap[piso.id][0] + (randomFunc() - 0.5) * offset, coordsMap[piso.id][1] + (randomFunc() - 0.5) * offset]
             : [fallbackPos[0] + (randomFunc() - 0.5) * offset, fallbackPos[1] + (randomFunc() - 0.5) * offset]
           
