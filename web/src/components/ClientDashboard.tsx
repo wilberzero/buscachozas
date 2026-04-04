@@ -88,7 +88,7 @@ export default function ClientDashboard({ properties }: { properties: any[] }) {
             </div>
             <div className="flex items-baseline gap-2">
               <h1 className="text-2xl font-black text-slate-800 tracking-tight">BuscaChozas</h1>
-              <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md tracking-widest">v1.0.1</span>
+              <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md tracking-widest">v1.0.2</span>
             </div>
           </div>
           
@@ -203,9 +203,9 @@ export default function ClientDashboard({ properties }: { properties: any[] }) {
       </div>
 
       {/* CONTENIDO PRINCIPAL */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow w-full">
         {view === 'map' ? (
-          <div className="animate-in fade-in zoom-in-95 duration-700 bg-white p-4 rounded-[48px] shadow-2xl border border-slate-100">
+          <div className="animate-in fade-in zoom-in-95 duration-700 bg-white p-4 rounded-[48px] shadow-2xl border border-slate-100 w-full">
             <Map properties={filteredProperties} />
           </div>
         ) : (
