@@ -112,6 +112,18 @@ export default function Map({ properties }: { properties: any[] }) {
     });
   }
 
+  // Función para generar un número pseudoaleatorio determinista basado en un string (el ID)
+  const seededRandom = (seed: string) => {
+    let hash = 0;
+    for (let i = 0; i < seed.length; i++) {
+      hash = Math.imul(31, hash) + seed.charCodeAt(i) | 0;
+    }
+    return () => {
+      hash = Math.imul(741103597, hash) + 1;
+      return (hash >>> 0) / 4294967296;
+    }
+  }
+
   return (
     <div className="h-[650px] w-full rounded-[40px] overflow-hidden border-8 border-white shadow-2xl relative z-0 mt-4 leaflet-container-fix">
       <MapContainer center={BURGOS_CENTER} zoom={13} scrollWheelZoom={true} style={{ height: '100%', width: '100%', minHeight: '650px' }}>
@@ -122,10 +134,13 @@ export default function Map({ properties }: { properties: any[] }) {
         />
         
         {properties.map((piso) => {
-          // Si no tiene coords reales, usar una aproximación aleatoria sobre el centro para que no se superpongan
+          // Generador aleatorio fijo para este piso concreto
+          const randomFunc = seededRandom(piso.id)
+          
+          // Si no tiene coords reales, usar una aproximación "aleatoria" pero FIJA sobre el centro
           const pos: [number, number] = coordsMap[piso.id] || [
-            BURGOS_CENTER[0] + (Math.random() - 0.5) * 0.04, 
-            BURGOS_CENTER[1] + (Math.random() - 0.5) * 0.04
+            BURGOS_CENTER[0] + (randomFunc() - 0.5) * 0.04, 
+            BURGOS_CENTER[1] + (randomFunc() - 0.5) * 0.04
           ]
           
           const sortedHistory = [...(piso.price_history || [])].sort((a: any, b: any) => 
