@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase-db'
+import { supabase } from '@/lib/supabase-db'
 import ClientDashboard from '@/components/ClientDashboard'
 
 export const revalidate = 0 
