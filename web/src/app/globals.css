@@ -37,7 +37,15 @@ body {
   z-index: 2 !important;
 }
 
-.leaflet-container-fix img {
+.leaflet-container .leaflet-pane img {
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.leaflet-marker-icon,
+.leaflet-marker-shadow {
   max-width: none !important;
   max-height: none !important;
 }
