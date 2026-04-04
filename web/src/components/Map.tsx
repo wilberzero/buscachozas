@@ -81,9 +81,14 @@ export default function Map({ properties }: { properties: any[] }) {
       let index = 0;
       
       for (const piso of properties) {
+        // Usar lat y lng de la base de datos si existen
+        if (piso.lat !== null && piso.lng !== null && piso.lat !== undefined) {
+          newCoords[piso.id] = [piso.lat, piso.lng]
+          continue;
+        }
+
         if (coordsMap[piso.id]) continue;
         
-        // Pasamos SOLO la dirección (address) al geocodificador. El barrio lo confunde.
         const streetAddr = piso.address || '';
         
         if (streetAddr) {

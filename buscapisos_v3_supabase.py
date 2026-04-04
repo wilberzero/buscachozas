@@ -2,6 +2,7 @@ import random
 import time
 import os
 import re
+import json
 from datetime import datetime
 from curl_cffi import requests
 from bs4 import BeautifulSoup
@@ -31,6 +32,33 @@ class IdealistaScraperSupabase:
         self.log_id = None
         self.processed_count = 0
         self.errors_count = 0
+        self.geocode_cache = {}
+
+    def _geocode_address(self, address):
+        if not address:
+            return None, None
+        if address in self.geocode_cache:
+            return self.geocode_cache[address]
+        
+        try:
+            clean_addr = address.split(',')[0].replace('º', '').replace('ª', '').strip()
+            if 'barrio' in clean_addr.lower() and len(clean_addr) < 15:
+                return None, None
+            
+            query = f"{clean_addr}, Burgos, Spain"
+            res = requests.get(f"https://nominatim.openstreetmap.org/search?format=json&q={requests.utils.quote(query)}&limit=1", timeout=10)
+            data = res.json()
+            if data and len(data) > 0:
+                coords = (float(data[0]['lat']), float(data[0]['lon']))
+                self.geocode_cache[address] = coords
+                time.sleep(1.1) # Respetar rate limit de Nominatim
+                return coords
+        except Exception as e:
+            print(f"[!] Error geocoding {address}: {e}")
+        
+        self.geocode_cache[address] = (None, None)
+        time.sleep(1.1)
+        return None, None
 
     def start_log(self):
         try:
@@ -123,14 +151,24 @@ class IdealistaScraperSupabase:
                 if not precio_num: continue
 
                 # LÓGICA SUPABASE
-                response = self.supabase.table('properties').select('id').eq('external_id', external_id).execute()
+                response = self.supabase.table('properties').select('id, lat').eq('external_id', external_id).execute()
                 
                 if len(response.data) > 0:
                     db_id = response.data[0]['id']
-                    self.supabase.table('properties').update({
+                    update_data = {
                         "last_seen_at": datetime.now().isoformat(),
                         "active": True
-                    }).eq('id', db_id).execute()
+                    }
+                    
+                    # Intentar geocodificar retrospectivamente si no tiene latitud
+                    if response.data[0].get('lat') is None:
+                        tipo, direccion, barrio = self._parsear_titulo(link_elem.get_text().strip())
+                        lat, lng = self._geocode_address(direccion)
+                        if lat is not None:
+                            update_data['lat'] = lat
+                            update_data['lng'] = lng
+
+                    self.supabase.table('properties').update(update_data).eq('id', db_id).execute()
                     
                     # Chequear precio
                     hist = self.supabase.table('price_history').select('price').eq('property_id', db_id).order('recorded_at', desc=True).limit(1).execute()
@@ -142,18 +180,24 @@ class IdealistaScraperSupabase:
                     details_raw = " | ".join([d.get_text().strip() for d in anuncio.select('.item-detail')])
                     rooms, size_m2, floor = self._parsear_detalles(details_raw)
                     
+                    # Geocodificar en el momento de crear
+                    lat, lng = self._geocode_address(direccion)
+                    
                     prop_data = {
                         "external_id": external_id,
                         "title": link_elem.get_text().strip(),
                         "type": tipo, "address": direccion, "neighborhood": barrio,
                         "rooms": rooms, "size_m2": size_m2, "floor": floor,
-                        "advertiser": "Profesional", "url": self.base_url + url_path, "active": True
+                        "advertiser": "Profesional", "url": self.base_url + url_path, "active": True,
+                        "lat": lat, "lng": lng
                     }
                     res = self.supabase.table('properties').insert(prop_data).execute()
                     if res.data:
                         self.supabase.table('price_history').insert({"property_id": res.data[0]['id'], "price": precio_num}).execute()
 
-            except: self.errors_count += 1
+            except Exception as e: 
+                print(f"[!] Error procesando anuncio: {e}")
+                self.errors_count += 1
 
     def _parsear_precio(self, p): return int(re.sub(r'[^\d]', '', p)) if p else None
     def _parsear_titulo(self, t): 

@@ -88,7 +88,7 @@ export default function ClientDashboard({ properties }: { properties: any[] }) {
             </div>
             <div className="flex items-baseline gap-2">
               <h1 className="text-2xl font-black text-slate-800 tracking-tight">BuscaChozas</h1>
-              <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md tracking-widest">v1.0.10</span>
+              <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md tracking-widest">v1.0.11</span>
             </div>
           </div>
           
