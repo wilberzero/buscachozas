@@ -37,7 +37,7 @@ body {
   z-index: 2 !important;
 }
 
-.leaflet-container-fix img.leaflet-tile {
+.leaflet-container-fix img {
   max-width: none !important;
   max-height: none !important;
 }
