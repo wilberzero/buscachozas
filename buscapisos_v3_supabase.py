@@ -3,6 +3,9 @@ import time
 import os
 import re
 import json
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from datetime import datetime
 from curl_cffi import requests
 from bs4 import BeautifulSoup
@@ -23,102 +26,68 @@ class IdealistaScraperSupabase:
             "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             "accept-language": "es-ES,es;q=0.9",
             "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.5 Safari/605.1.15",
-            "sec-fetch-dest": "document",
-            "sec-fetch-mode": "navigate",
-            "sec-fetch-site": "none",
-            "sec-fetch-user": "?1",
         }
         self.seen_in_this_run = []
-        self.log_id = None
         self.processed_count = 0
         self.errors_count = 0
         self.geocode_cache = {}
+        
+        # Colecciones para el informe por email
+        self.new_ads = []
+        self.price_changes = []
+        self.deleted_ads = []
+        self.favorites_ids = []
+        self.user_config = {}
 
     def _geocode_address(self, address):
-        if not address:
-            return None, None
-        if address in self.geocode_cache:
-            return self.geocode_cache[address]
-        
+        if not address: return None, None
+        if address in self.geocode_cache: return self.geocode_cache[address]
         try:
             clean_addr = address.split(',')[0].replace('º', '').replace('ª', '').strip()
-            if 'barrio' in clean_addr.lower() and len(clean_addr) < 15:
-                return None, None
-            
             query = f"{clean_addr}, Burgos, Spain"
-            headers = {"User-Agent": "BuscaChozasBot/1.0 (contacto@tudominio.com)"}
+            headers = {"User-Agent": "BuscaChozasBot/1.0"}
             res = requests.get(f"https://nominatim.openstreetmap.org/search?format=json&q={requests.utils.quote(query)}&limit=1", headers=headers, timeout=10)
-            
             if res.status_code == 200:
                 data = res.json()
-                if data and len(data) > 0:
+                if data:
                     coords = (float(data[0]['lat']), float(data[0]['lon']))
                     self.geocode_cache[address] = coords
-                    time.sleep(1.1) # Respetar rate limit de Nominatim
+                    time.sleep(1.1)
                     return coords
-            else:
-                print(f"[!] Error de Nominatim {res.status_code} para {address}")
-        except Exception as e:
-            print(f"[!] Error geocoding {address}: {e}")
-        
-        self.geocode_cache[address] = (None, None)
-        time.sleep(1.1)
+        except: pass
         return None, None
 
-    def start_log(self):
+    def _cargar_configuracion(self):
         try:
-            res = self.supabase.table('app_logs').insert({
-                "status": "running",
-                "message": "Iniciando scraper diario..."
-            }).execute()
+            res = self.supabase.table('config').select('*').eq('id', 1).execute()
             if res.data:
-                self.log_id = res.data[0]['id']
-        except: pass
-
-    def finish_log(self, status, message):
-        if not self.log_id: return
-        try:
-            self.supabase.table('app_logs').update({
-                "status": status,
-                "message": message,
-                "end_time": datetime.now().isoformat(),
-                "items_processed": self.processed_count,
-                "errors_count": self.errors_count
-            }).eq('id', self.log_id).execute()
-        except: pass
+                self.user_config = res.data[0]
+                if self.user_config.get('scraper_url'):
+                    self.start_url = self.user_config['scraper_url']
+            
+            # Cargar IDs de favoritos para marcarlos en el email
+            favs_res = self.supabase.table('favorites').select('property_id').execute()
+            self.favorites_ids = [f['property_id'] for f in favs_res.data] if favs_res.data else []
+        except Exception as e:
+            print(f"[!] Error cargando config: {e}")
 
     def ejecutar(self):
-        self.start_log()
-        
-        # Obtener URL configurada desde la base de datos
-        try:
-            config_res = self.supabase.table('config').select('scraper_url').eq('id', 1).execute()
-            if config_res.data and config_res.data[0]['scraper_url']:
-                self.start_url = config_res.data[0]['scraper_url']
-                print(f"[*] URL cargada desde BD: {self.start_url}")
-        except Exception as e:
-            print(f"[!] Error cargando configuración: {e}. Usando URL por defecto.")
-
+        self._cargar_configuracion()
         current_url = self.start_url
         page_num = 1
-        prev_url = self.base_url
         
         try:
             print(f"[*] Iniciando BuscaChozas Bot...")
             self.session.get(self.base_url, headers=self.headers, impersonate="safari15_5", timeout=20)
-            time.sleep(random.uniform(5, 10))
+            time.sleep(random.uniform(2, 5))
 
             while current_url:
                 print(f"[*] PROCESANDO PÁGINA {page_num}...")
                 res = self.session.get(current_url, headers=self.headers, impersonate="safari15_5", timeout=30)
-
-                if res.status_code != 200:
-                    self.errors_count += 1
-                    break
+                if res.status_code != 200: break
 
                 soup = BeautifulSoup(res.text, 'html.parser')
                 anuncios = soup.select('article.item')
-                
                 if not anuncios: break
 
                 self._procesar_anuncios(anuncios)
@@ -127,15 +96,18 @@ class IdealistaScraperSupabase:
                 if next_page_elem and 'href' in next_page_elem.attrs:
                     current_url = self.base_url + next_page_elem['href']
                     page_num += 1
-                    time.sleep(random.randint(55, 130))
+                    time.sleep(random.randint(30, 60))
                 else:
                     current_url = None
 
-            self.finish_log("success", f"Completado: {self.processed_count} chozas revisadas.")
+            # --- NUEVA LÓGICA: VERIFICAR BAJAS ---
+            self._verificar_bajas()
+            
+            # --- NUEVA LÓGICA: ENVIAR EMAIL ---
+            self._enviar_notificaciones()
 
         except Exception as e:
-            self.errors_count += 1
-            self.finish_log("error", f"Error crítico: {str(e)}")
+            print(f"[!] Error crítico: {e}")
 
     def _procesar_anuncios(self, anuncios):
         for anuncio in anuncios:
@@ -147,64 +119,122 @@ class IdealistaScraperSupabase:
                 match_id = re.search(r'/inmueble/(\d+)/', url_path)
                 if not match_id: continue
                 external_id = match_id.group(1)
-                
                 self.seen_in_this_run.append(external_id)
-                self.processed_count += 1
 
                 price_elem = anuncio.select_one('.item-price')
                 precio_num = int(re.sub(r'[^\d]', '', price_elem.get_text())) if price_elem else None
                 if not precio_num: continue
 
-                # LÓGICA SUPABASE
-                response = self.supabase.table('properties').select('id, lat').eq('external_id', external_id).execute()
+                response = self.supabase.table('properties').select('*').eq('external_id', external_id).execute()
                 
                 if len(response.data) > 0:
-                    db_id = response.data[0]['id']
-                    update_data = {
-                        "last_seen_at": datetime.now().isoformat(),
-                        "active": True
-                    }
+                    prop = response.data[0]
+                    db_id = prop['id']
                     
-                    # Intentar geocodificar retrospectivamente si no tiene latitud
-                    if response.data[0].get('lat') is None:
-                        tipo, direccion, barrio = self._parsear_titulo(link_elem.get_text().strip())
-                        lat, lng = self._geocode_address(direccion)
-                        if lat is not None:
-                            update_data['lat'] = lat
-                            update_data['lng'] = lng
-
-                    self.supabase.table('properties').update(update_data).eq('id', db_id).execute()
-                    
-                    # Chequear precio
+                    # Chequear cambio de precio
                     hist = self.supabase.table('price_history').select('price').eq('property_id', db_id).order('recorded_at', desc=True).limit(1).execute()
-                    if hist.data and float(hist.data[0]['price']) != float(precio_num):
+                    if hist.data and int(hist.data[0]['price']) != precio_num:
+                        old_price = int(hist.data[0]['price'])
                         self.supabase.table('price_history').insert({"property_id": db_id, "price": precio_num}).execute()
+                        self.price_changes.append({
+                            "title": prop['title'],
+                            "old": old_price,
+                            "new": precio_num,
+                            "url": prop['url'],
+                            "is_fav": db_id in self.favorites_ids
+                        })
+
+                    self.supabase.table('properties').update({"last_seen_at": datetime.now().isoformat(), "active": True}).eq('id', db_id).execute()
                 else:
-                    # Insertar nuevo
+                    # Nuevo anuncio
                     tipo, direccion, barrio = self._parsear_titulo(link_elem.get_text().strip())
-                    details_raw = " | ".join([d.get_text().strip() for d in anuncio.select('.item-detail')])
-                    rooms, size_m2, floor = self._parsear_detalles(details_raw)
-                    
-                    # Geocodificar en el momento de crear
                     lat, lng = self._geocode_address(direccion)
-                    
                     prop_data = {
-                        "external_id": external_id,
-                        "title": link_elem.get_text().strip(),
+                        "external_id": external_id, "title": link_elem.get_text().strip(),
                         "type": tipo, "address": direccion, "neighborhood": barrio,
-                        "rooms": rooms, "size_m2": size_m2, "floor": floor,
-                        "advertiser": "Profesional", "url": self.base_url + url_path, "active": True,
-                        "lat": lat, "lng": lng
+                        "url": self.base_url + url_path, "active": True, "lat": lat, "lng": lng
                     }
                     res = self.supabase.table('properties').insert(prop_data).execute()
                     if res.data:
-                        self.supabase.table('price_history').insert({"property_id": res.data[0]['id'], "price": precio_num}).execute()
+                        new_id = res.data[0]['id']
+                        self.supabase.table('price_history').insert({"property_id": new_id, "price": precio_num}).execute()
+                        self.new_ads.append({**prop_data, "price": precio_num})
 
-            except Exception as e: 
-                print(f"[!] Error procesando anuncio: {e}")
-                self.errors_count += 1
+            except Exception as e: print(f"Error procesando anuncio: {e}")
 
-    def _parsear_precio(self, p): return int(re.sub(r'[^\d]', '', p)) if p else None
+    def _verificar_bajas(self):
+        print("[*] Verificando anuncios eliminados...")
+        # Buscamos en la BD los que estaban activos pero no se han visto en esta pasada
+        activas_db = self.supabase.table('properties').select('id, external_id, url, title').eq('active', True).execute()
+        for p in activas_db.data:
+            if p['external_id'] not in self.seen_in_this_run:
+                # Visitamos la URL para confirmar
+                try:
+                    time.sleep(2)
+                    res = self.session.get(p['url'], headers=self.headers, impersonate="safari15_5")
+                    # Si da 404 o redirige a la home o sale "anuncio finalizado"
+                    if res.status_code == 404 or "aviso_finalizado" in res.text or "ya no está publicado" in res.text:
+                        self.supabase.table('properties').update({"active": False}).eq('id', p['id']).execute()
+                        self.deleted_ads.append({
+                            "title": p['title'],
+                            "url": p['url'],
+                            "is_fav": p['id'] in self.favorites_ids
+                        })
+                        print(f"[!] Baja confirmada: {p['title']}")
+                except: pass
+
+    def _enviar_notificaciones(self):
+        email_destino = self.user_config.get('alert_email')
+        if not email_destino or (not self.new_ads and not self.price_changes and not self.deleted_ads):
+            print("[*] No hay cambios relevantes o email no configurado. No se envía correo.")
+            return
+
+        print(f"[*] Enviando resumen de cambios a {email_destino}...")
+        
+        cuerpo = "<h2>Resumen diario de BuscaChozas</h2>"
+        
+        if self.new_ads:
+            cuerpo += "<h3>🚀 Nuevas Chozas Detectadas</h3><ul>"
+            for a in self.new_ads:
+                cuerpo += f"<li><b>{a['price']}€</b> - <a href='{a['url']}'>{a['title']}</a></li>"
+            cuerpo += "</ul>"
+
+        if self.price_changes:
+            cuerpo += "<h3>💰 Cambios de Precio</h3><ul>"
+            for c in self.price_changes:
+                fav_tag = "<b style='color:red'>[⭐ FAVORITO]</b> " if c['is_fav'] else ""
+                emoji = "📉" if c['new'] < c['old'] else "📈"
+                cuerpo += f"<li>{fav_tag}{emoji} {c['old']}€ -> <b>{c['new']}€</b> - <a href='{c['url']}'>{c['title']}</a></li>"
+            cuerpo += "</ul>"
+
+        if self.deleted_ads:
+            cuerpo += "<h3>🗑️ Anuncios Eliminados</h3><ul>"
+            for d in self.deleted_ads:
+                fav_tag = "<b style='color:red'>[⭐ FAVORITO]</b> " if d['is_fav'] else ""
+                cuerpo += f"<li>{fav_tag}{d['title']}</li>"
+            cuerpo += "</ul>"
+
+        # Aquí intentamos enviar por SMTP si están los datos, si no, lo dejamos en el log
+        try:
+            msg = MIMEMultipart()
+            msg['Subject'] = f"BuscaChozas: {len(self.new_ads)} nuevas, {len(self.price_changes)} cambios"
+            msg['From'] = "BuscaChozas Bot <notificaciones@buscachozas.com>"
+            msg['To'] = email_destino
+            msg.attach(MIMEText(cuerpo, 'html'))
+
+            # NOTA: Para que esto funcione, el usuario debe poner sus datos SMTP en la tabla 'config'
+            if self.user_config.get('smtp_user') and self.user_config.get('smtp_pass'):
+                server = smtplib.SMTP(self.user_config.get('smtp_server', 'smtp.gmail.com'), self.user_config.get('smtp_port', 587))
+                server.starttls()
+                server.login(self.user_config['smtp_user'], self.user_config['smtp_pass'])
+                server.sendmail(self.user_config['smtp_user'], email_destino, msg.as_string())
+                server.quit()
+                print("[+] Email enviado con éxito.")
+            else:
+                print("[!] Email generado pero no enviado: Falta configurar SMTP en la tabla 'config'.")
+        except Exception as e:
+            print(f"[!] Error enviando email: {e}")
+
     def _parsear_titulo(self, t): 
         parts = t.split(" en ")
         tipo = parts[0]

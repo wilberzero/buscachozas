@@ -6,15 +6,30 @@ import { formatDistanceToNow, format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import dynamic from 'next/dynamic'
 import { LineChart, Line, ResponsiveContainer } from 'recharts'
+import { createClient } from '@/lib/supabase/client'
 
 const Map = dynamic(() => import('./Map'), { ssr: false })
 
-export default function ClientDashboard({ properties }: { properties: any[] }) {
+export default function ClientDashboard({ 
+  properties, 
+  initialFavorites = [], 
+  initialConfig = { scraper_url: '', alert_email: '' } 
+}: { 
+  properties: any[], 
+  initialFavorites?: string[],
+  initialConfig?: any
+}) {
+  const supabase = createClient()
   const [view, setView] = useState<'list' | 'map'>('list')
-  const [favorites, setFavorites] = useState<string[]>([])
+  const [favorites, setFavorites] = useState<string[]>(initialFavorites)
   const [showOnlyFavs, setShowOnlyFavs] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
   
+  // Ajustes de Usuario
+  const [config, setConfig] = useState(initialConfig)
+  const [isSavingConfig, setIsSavingConfig] = useState(false)
+
   // Filtros Avanzados
   const [includeText, setIncludeText] = useState('')
   const [excludeText, setExcludeText] = useState('')
@@ -24,10 +39,44 @@ export default function ClientDashboard({ properties }: { properties: any[] }) {
 
   const [expandedPrices, setExpandedPrices] = useState<string[]>([])
 
-  const toggleFavorite = (id: string) => {
+  const toggleFavorite = async (id: string) => {
+    const isFav = favorites.includes(id)
+    
+    // Actualización optimista de la UI
     setFavorites(prev => 
-      prev.includes(id) ? prev.filter(fId => fId !== id) : [...prev, id]
+      isFav ? prev.filter(fId => fId !== id) : [...prev, id]
     )
+
+    try {
+      if (isFav) {
+        await supabase.from('favorites').delete().eq('property_id', id)
+      } else {
+        await supabase.from('favorites').insert({ property_id: id })
+      }
+    } catch (error) {
+      console.error('Error actualizando favoritos:', error)
+      // Revertir si falla
+      setFavorites(prev => 
+        !isFav ? prev.filter(fId => fId !== id) : [...prev, id]
+      )
+    }
+  }
+
+  const saveConfig = async () => {
+    setIsSavingConfig(true)
+    try {
+      await supabase.from('config').upsert({
+        id: 1,
+        scraper_url: config.scraper_url,
+        alert_email: config.alert_email
+      })
+      setShowSettings(false)
+    } catch (error) {
+      console.error('Error guardando configuración:', error)
+      alert('Error al guardar los ajustes')
+    } finally {
+      setIsSavingConfig(false)
+    }
   }
 
   const toggleExpandPrice = (id: string) => {
@@ -88,11 +137,18 @@ export default function ClientDashboard({ properties }: { properties: any[] }) {
             </div>
             <div className="flex items-baseline gap-2">
               <h1 className="text-2xl font-black text-slate-800 tracking-tight">BuscaChozas</h1>
-              <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md tracking-widest">v1.0.12</span>
+              <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md tracking-widest">v1.0.13</span>
             </div>
           </div>
           
           <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setShowSettings(true)}
+              className="p-3 rounded-2xl border-2 border-slate-100 hover:border-slate-200 text-slate-600 bg-white shadow-sm transition-all"
+              title="Ajustes"
+            >
+              <SlidersHorizontal className="w-5 h-5" />
+            </button>
             <button 
               onClick={() => setShowFilters(!showFilters)}
               className={`p-3 rounded-2xl border-2 transition-all flex items-center gap-2 ${showFilters ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-200' : 'bg-white text-slate-600 border-slate-100 hover:border-slate-200 shadow-sm'}`}
@@ -327,6 +383,55 @@ export default function ClientDashboard({ properties }: { properties: any[] }) {
           </div>
         )}
       </div>
+      {/* MODAL DE AJUSTES */}
+      {showSettings && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[300] flex items-center justify-center p-4">
+          <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <div>
+                <h2 className="text-xl font-black text-slate-800 tracking-tight">Panel de Control</h2>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Configuración del Bot Scraper</p>
+              </div>
+              <button onClick={() => setShowSettings(false)} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
+                <X className="w-6 h-6 text-slate-400" />
+              </button>
+            </div>
+            
+            <div className="p-8 space-y-6">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">URL de Búsqueda (Idealista)</label>
+                <textarea 
+                  rows={3}
+                  className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl text-xs font-bold focus:border-blue-400 outline-none transition-all text-slate-700 leading-relaxed"
+                  placeholder="Pega aquí la URL de búsqueda de Idealista..."
+                  value={config.scraper_url}
+                  onChange={(e) => setConfig({...config, scraper_url: e.target.value})}
+                />
+                <p className="text-[9px] text-slate-400 italic ml-1">* El bot usará esta URL cada mañana a las 09:00.</p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Email de Alertas</label>
+                <input 
+                  type="email" 
+                  className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl text-sm font-bold focus:border-blue-400 outline-none transition-all text-slate-700"
+                  placeholder="tu@email.com"
+                  value={config.alert_email}
+                  onChange={(e) => setConfig({...config, alert_email: e.target.value})}
+                />
+              </div>
+
+              <button 
+                onClick={saveConfig}
+                disabled={isSavingConfig}
+                className="w-full bg-slate-900 hover:bg-blue-700 text-white font-black py-4 rounded-2xl text-xs uppercase tracking-[0.2em] transition-all shadow-xl shadow-slate-200 disabled:opacity-50"
+              >
+                {isSavingConfig ? 'Guardando...' : 'Guardar Configuración'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
