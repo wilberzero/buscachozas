@@ -88,7 +88,7 @@ export default function ClientDashboard({ properties }: { properties: any[] }) {
             </div>
             <div className="flex items-baseline gap-2">
               <h1 className="text-2xl font-black text-slate-800 tracking-tight">BuscaChozas</h1>
-              <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md tracking-widest">v1.0.11</span>
+              <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md tracking-widest">v1.0.12</span>
             </div>
           </div>
           
@@ -242,8 +242,9 @@ export default function ClientDashboard({ properties }: { properties: any[] }) {
                   <div className="p-6 sm:p-8 flex-grow">
                     <div className="flex justify-between items-center mb-4 pr-12 sm:pr-16">
                       <span className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl sm:rounded-2xl text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] bg-slate-900 text-white shadow-md shadow-slate-300">{piso.type || 'Choza'}</span>
-                      <span className="text-[9px] sm:text-[10px] font-bold text-slate-600 uppercase tracking-wider bg-slate-100 px-2 py-1 sm:px-3 sm:py-1.5 rounded-xl sm:rounded-2xl border border-slate-200">
-                        {formatDistanceToNow(new Date(piso.last_seen_at), { addSuffix: true, locale: es })}
+                      <span className="text-[9px] sm:text-[10px] font-bold text-blue-700 uppercase tracking-wider bg-blue-50 px-2 py-1 sm:px-3 sm:py-1.5 rounded-xl sm:rounded-2xl border border-blue-100 flex items-center gap-1.5">
+                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></div>
+                        Check: {formatDistanceToNow(new Date(piso.last_seen_at), { addSuffix: true, locale: es })}
                       </span>
                     </div>
                     
@@ -292,12 +293,23 @@ export default function ClientDashboard({ properties }: { properties: any[] }) {
 
                     {isExpanded && (
                       <div className="mt-4 space-y-2 animate-in slide-in-from-top-4 duration-500">
-                        {[...sortedHist].reverse().map((h: any, idx) => (
-                          <div key={idx} className="flex justify-between items-center px-4 py-3 sm:px-6 sm:py-4 bg-slate-50 rounded-2xl sm:rounded-[24px] border border-slate-200 hover:border-blue-300 hover:bg-white transition-all shadow-sm group/hist">
-                            <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest">{format(new Date(h.recorded_at), "dd MMMM yyyy", { locale: es })}</span>
-                            <span className="text-sm sm:text-base font-black text-slate-800 group-hover/hist:text-blue-700 transition-colors">{h.price.toLocaleString('es-ES')}€</span>
-                          </div>
-                        ))}
+                        {sortedHist.map((h: any, idx) => {
+                          const isOriginal = idx === 0;
+                          return (
+                            <div key={idx} className={`flex justify-between items-center px-4 py-3 sm:px-6 sm:py-4 rounded-2xl border transition-all shadow-sm group/hist ${isOriginal ? 'bg-slate-100 border-slate-200' : 'bg-white border-blue-100 hover:border-blue-300'}`}>
+                              <div className="flex flex-col">
+                                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                                  {format(new Date(h.recorded_at), "dd MMMM yyyy", { locale: es })}
+                                </span>
+                                {isOriginal && <span className="text-[8px] font-bold text-blue-600 uppercase">Precio Inicial</span>}
+                                {!isOriginal && <span className="text-[8px] font-bold text-emerald-600 uppercase">Cambio detectado</span>}
+                              </div>
+                              <span className={`text-sm sm:text-base font-black ${isOriginal ? 'text-slate-600' : 'text-slate-900 group-hover:text-blue-700'}`}>
+                                {h.price.toLocaleString('es-ES')}€
+                              </span>
+                            </div>
+                          )
+                        })}
                       </div>
                     )}
                   </div>
