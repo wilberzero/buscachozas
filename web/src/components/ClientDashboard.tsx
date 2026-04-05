@@ -68,7 +68,11 @@ export default function ClientDashboard({
       await supabase.from('config').upsert({
         id: 1,
         scraper_url: config.scraper_url,
-        alert_email: config.alert_email
+        alert_email: config.alert_email,
+        smtp_server: config.smtp_server,
+        smtp_port: config.smtp_port,
+        smtp_user: config.smtp_user,
+        smtp_pass: config.smtp_pass
       })
       setShowSettings(false)
     } catch (error) {
@@ -137,7 +141,7 @@ export default function ClientDashboard({
             </div>
             <div className="flex items-baseline gap-2">
               <h1 className="text-2xl font-black text-slate-800 tracking-tight">BuscaChozas</h1>
-              <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md tracking-widest">v1.0.13</span>
+              <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md tracking-widest">v1.0.14</span>
             </div>
           </div>
           
@@ -416,9 +420,55 @@ export default function ClientDashboard({
                   type="email" 
                   className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl text-sm font-bold focus:border-blue-400 outline-none transition-all text-slate-700"
                   placeholder="tu@email.com"
-                  value={config.alert_email}
+                  value={config.alert_email || ''}
                   onChange={(e) => setConfig({...config, alert_email: e.target.value})}
                 />
+              </div>
+
+              <div className="pt-4 border-t border-slate-100">
+                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Configuración SMTP (Envío)</h3>
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold text-slate-400 uppercase ml-1">Servidor</label>
+                    <input 
+                      type="text" 
+                      className="w-full p-3 bg-slate-50 border-2 border-slate-100 rounded-xl text-xs font-bold focus:border-blue-400 outline-none transition-all text-slate-700"
+                      placeholder="smtp.gmail.com"
+                      value={config.smtp_server || ''}
+                      onChange={(e) => setConfig({...config, smtp_server: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold text-slate-400 uppercase ml-1">Puerto</label>
+                    <input 
+                      type="number" 
+                      className="w-full p-3 bg-slate-50 border-2 border-slate-100 rounded-xl text-xs font-bold focus:border-blue-400 outline-none transition-all text-slate-700"
+                      placeholder="587"
+                      value={config.smtp_port || ''}
+                      onChange={(e) => setConfig({...config, smtp_port: e.target.value})}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1 mb-4">
+                  <label className="text-[9px] font-bold text-slate-400 uppercase ml-1">Usuario SMTP</label>
+                  <input 
+                    type="text" 
+                    className="w-full p-3 bg-slate-50 border-2 border-slate-100 rounded-xl text-xs font-bold focus:border-blue-400 outline-none transition-all text-slate-700"
+                    placeholder="tu-email@gmail.com"
+                    value={config.smtp_user || ''}
+                    onChange={(e) => setConfig({...config, smtp_user: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[9px] font-bold text-slate-400 uppercase ml-1">Contraseña Aplicación</label>
+                  <input 
+                    type="password" 
+                    className="w-full p-3 bg-slate-50 border-2 border-slate-100 rounded-xl text-xs font-bold focus:border-blue-400 outline-none transition-all text-slate-700"
+                    placeholder="xxxx xxxx xxxx xxxx"
+                    value={config.smtp_pass || ''}
+                    onChange={(e) => setConfig({...config, smtp_pass: e.target.value})}
+                  />
+                </div>
               </div>
 
               <button 
