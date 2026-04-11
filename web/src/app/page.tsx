@@ -30,7 +30,7 @@ export default async function Home() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="bg-white p-6 rounded-xl shadow-lg border border-red-200">
           <h2 className="text-red-600 font-bold text-lg mb-2">Error de Conexión</h2>
-          <p className="text-gray-700">{error.message}</p>
+          <p className="text-gray-700">{propsRes.error.message}</p>
         </div>
       </div>
     )
