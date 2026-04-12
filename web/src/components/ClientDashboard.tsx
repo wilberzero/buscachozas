@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { MapPin, BedDouble, Scaling, ArrowRight, List, MapIcon, Heart, Search, TrendingDown, TrendingUp, Calendar, ChevronDown, ChevronUp, Filter as FilterIcon, X, EyeOff, LayoutGrid, Euro, Info, SlidersHorizontal } from 'lucide-react'
+import { MapPin, BedDouble, Scaling, ArrowRight, List, MapIcon, Heart, Search, TrendingDown, TrendingUp, Calendar, ChevronDown, ChevronUp, Filter as FilterIcon, X, EyeOff, LayoutGrid, Euro, Info, SlidersHorizontal, Settings } from 'lucide-react'
 import { formatDistanceToNow, format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import dynamic from 'next/dynamic'
@@ -141,7 +141,7 @@ export default function ClientDashboard({
             </div>
             <div className="flex items-baseline gap-2">
               <h1 className="text-2xl font-black text-slate-800 tracking-tight">BuscaChozas</h1>
-              <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md tracking-widest">v1.0.15</span>
+              <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md tracking-widest">v1.0.16</span>
             </div>
           </div>
           
@@ -151,7 +151,7 @@ export default function ClientDashboard({
               className="p-3 rounded-2xl border-2 border-slate-100 hover:border-slate-200 text-slate-600 bg-white shadow-sm transition-all"
               title="Ajustes"
             >
-              <SlidersHorizontal className="w-5 h-5" />
+              <Settings className="w-5 h-5" />
             </button>
             <button 
               onClick={() => setShowFilters(!showFilters)}
