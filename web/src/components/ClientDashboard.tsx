@@ -5,7 +5,7 @@ import { MapPin, BedDouble, Scaling, ArrowRight, List, MapIcon, Heart, Search, T
 import { formatDistanceToNow, format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import dynamic from 'next/dynamic'
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, CartesianGrid } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, CartesianGrid, LineChart, Line } from 'recharts'
 import { createClient } from '@/lib/supabase/client'
 
 const Map = dynamic(() => import('./Map'), { ssr: false })
@@ -27,6 +27,7 @@ export default function ClientDashboard({
   const [showFilters, setShowFilters] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [statsSortBy, setStatsSortBy] = useState<'diff' | 'price-asc' | 'price-desc'>('diff')
+  const [listSortBy, setListSortBy] = useState<'created-desc' | 'price-asc' | 'price-desc' | 'rooms-asc' | 'rooms-desc' | 'size-asc' | 'size-desc'>('created-desc')
   
   // Ajustes de Usuario
   const [config, setConfig] = useState(initialConfig)
@@ -139,8 +140,26 @@ export default function ClientDashboard({
       const roomsMatch = minRooms === '' || (p.rooms || 0) >= Number(minRooms)
       return priceMatch && sizeMatch && roomsMatch
     })
+
+    // Aplicar ordenación al listado principal
+    if (listSortBy === 'created-desc') {
+      // Orden predeterminado (por fecha de creación)
+    } else if (listSortBy === 'price-asc') {
+      results.sort((a, b) => a.currentPrice - b.currentPrice)
+    } else if (listSortBy === 'price-desc') {
+      results.sort((a, b) => b.currentPrice - a.currentPrice)
+    } else if (listSortBy === 'rooms-asc') {
+      results.sort((a, b) => (a.rooms || 0) - (b.rooms || 0))
+    } else if (listSortBy === 'rooms-desc') {
+      results.sort((a, b) => (b.rooms || 0) - (a.rooms || 0))
+    } else if (listSortBy === 'size-asc') {
+      results.sort((a, b) => (a.size_m2 || 0) - (b.size_m2 || 0))
+    } else if (listSortBy === 'size-desc') {
+      results.sort((a, b) => (b.size_m2 || 0) - (a.size_m2 || 0))
+    }
+
     return results
-  }, [allPropertiesParsed, showOnlyFavs, favorites, includeText, excludeText, maxPrice, minSize, minRooms])
+  }, [allPropertiesParsed, showOnlyFavs, favorites, includeText, excludeText, maxPrice, minSize, minRooms, listSortBy])
 
   // Propiedades Inactivas (Bajas)
   const inactiveProperties = useMemo(() => {
@@ -214,6 +233,33 @@ export default function ClientDashboard({
     }
   }, [allPropertiesParsed, statsSortBy])
 
+  // Datos para los gráficos de tendencias (Evolución de precios e €/m2)
+  const trendsChartData = useMemo(() => {
+    const actives = allPropertiesParsed.filter(p => p.active)
+    const datePriceMap: Record<string, { sumPrice: number; sumM2Price: number; count: number }> = {}
+
+    actives.forEach(p => {
+      p.sortedHist.forEach((h: any) => {
+        const dateKey = format(new Date(h.recorded_at), 'yyyy-MM-dd')
+        if (!datePriceMap[dateKey]) {
+          datePriceMap[dateKey] = { sumPrice: 0, sumM2Price: 0, count: 0 }
+        }
+        datePriceMap[dateKey].sumPrice += h.price
+        if (p.size_m2 > 0) {
+          datePriceMap[dateKey].sumM2Price += (h.price / p.size_m2)
+        }
+        datePriceMap[dateKey].count += 1
+      })
+    })
+
+    return Object.entries(datePriceMap).map(([date, data]) => ({
+      fecha: format(new Date(date), 'dd MMM', { locale: es }),
+      rawDate: date,
+      precioMedio: Math.round(data.sumPrice / data.count),
+      precioM2Medio: Math.round(data.sumM2Price / data.count)
+    })).sort((a, b) => a.rawDate.localeCompare(b.rawDate))
+  }, [allPropertiesParsed])
+
   return (
     <div className="flex flex-col min-h-screen bg-slate-50 font-sans text-slate-900 overflow-x-hidden">
       
@@ -239,7 +285,7 @@ export default function ClientDashboard({
             </div>
             <div className="flex items-baseline gap-2">
               <h1 className="text-2xl font-black text-slate-800 tracking-tight">BuscaChozas</h1>
-              <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md tracking-widest">v1.1.0</span>
+              <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md tracking-widest">v1.2.0</span>
             </div>
           </div>
           
@@ -395,13 +441,33 @@ export default function ClientDashboard({
               </button>
             </div>
 
-            {/* Favoritos Toggle */}
-            <button 
-              onClick={() => setShowOnlyFavs(!showOnlyFavs)}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-[10px] tracking-widest border transition-all ${showOnlyFavs ? 'bg-rose-50 border-rose-200 text-rose-700 shadow-sm' : 'bg-white border-slate-200 text-slate-600 hover:text-slate-800'}`}
-            >
-              <Heart className={`w-3.5 h-3.5 ${showOnlyFavs ? 'fill-rose-600 text-rose-600' : 'text-slate-400'}`} /> VER SOLO FAVORITOS
-            </button>
+            {/* Favoritos y Ordenación Toggle */}
+            <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+              {/* Selector de ordenación del listado principal */}
+              <div className="flex items-center gap-2 bg-white border border-slate-200 px-4 py-2.5 rounded-full shadow-sm text-xs font-bold text-slate-700">
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">Ordenar:</span>
+                <select 
+                  value={listSortBy} 
+                  onChange={(e: any) => setListSortBy(e.target.value)} 
+                  className="bg-transparent border-none outline-none font-black text-blue-755 text-[10px] uppercase tracking-wider cursor-pointer"
+                >
+                  <option value="created-desc">Más Recientes</option>
+                  <option value="price-asc">Precio: Menor a Mayor</option>
+                  <option value="price-desc">Precio: Mayor a Menor</option>
+                  <option value="rooms-asc">Habitaciones: Menor a Mayor</option>
+                  <option value="rooms-desc">Habitaciones: Mayor a Menor</option>
+                  <option value="size-asc">Superficie: Menor a Mayor</option>
+                  <option value="size-desc">Superficie: Mayor a Menor</option>
+                </select>
+              </div>
+
+              <button 
+                onClick={() => setShowOnlyFavs(!showOnlyFavs)}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-[10px] tracking-widest border transition-all ${showOnlyFavs ? 'bg-rose-50 border-rose-200 text-rose-700 shadow-sm' : 'bg-white border-slate-200 text-slate-600 hover:text-slate-800'}`}
+              >
+                <Heart className={`w-3.5 h-3.5 ${showOnlyFavs ? 'fill-rose-600 text-rose-600' : 'text-slate-400'}`} /> VER SOLO FAVORITOS
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -793,6 +859,55 @@ export default function ClientDashboard({
                             ))}
                           </Bar>
                         </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* 2.5. GRÁFICOS DE EVOLUCIÓN HISTÓRICA */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                  
+                  {/* Evolución del Precio Medio */}
+                  <div className="bg-white p-6 sm:p-8 rounded-[40px] shadow-2xl border border-slate-100 flex flex-col space-y-6">
+                    <div>
+                      <h3 className="text-base sm:text-lg font-black text-slate-800 tracking-tight">Evolución de Precio Promedio</h3>
+                      <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1">Tendencia histórica del precio promedio de viviendas actuales</p>
+                    </div>
+                    <div className="h-80 w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={trendsChartData} margin={{ top: 20, right: 20, left: -10, bottom: 20 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                          <XAxis dataKey="fecha" stroke="#94a3b8" fontSize={9} fontWeight="bold" tickLine={false} />
+                          <YAxis stroke="#94a3b8" fontSize={9} fontWeight="bold" tickLine={false} unit="€" />
+                          <Tooltip 
+                            contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '16px', color: '#fff', fontSize: '11px', fontWeight: 'bold' }}
+                            formatter={(v) => [v !== undefined ? `${Number(v).toLocaleString('es-ES')} €` : '', 'Precio Medio']}
+                          />
+                          <Line type="monotone" dataKey="precioMedio" stroke="#3b82f6" strokeWidth={4} activeDot={{ r: 8 }} dot={{ r: 4 }} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+
+                  {/* Evolución del Precio del m² */}
+                  <div className="bg-white p-6 sm:p-8 rounded-[40px] shadow-2xl border border-slate-100 flex flex-col space-y-6">
+                    <div>
+                      <h3 className="text-base sm:text-lg font-black text-slate-800 tracking-tight">Evolución del m² (€/m²)</h3>
+                      <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1">Tendencia histórica del valor del metro cuadrado</p>
+                    </div>
+                    <div className="h-80 w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={trendsChartData} margin={{ top: 20, right: 20, left: -10, bottom: 20 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                          <XAxis dataKey="fecha" stroke="#94a3b8" fontSize={9} fontWeight="bold" tickLine={false} />
+                          <YAxis stroke="#94a3b8" fontSize={9} fontWeight="bold" tickLine={false} unit="€" />
+                          <Tooltip 
+                            contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '16px', color: '#fff', fontSize: '11px', fontWeight: 'bold' }}
+                            formatter={(v) => [v !== undefined ? `${Number(v).toLocaleString('es-ES')} €/m²` : '', 'm² Medio']}
+                          />
+                          <Line type="monotone" dataKey="precioM2Medio" stroke="#10b981" strokeWidth={4} activeDot={{ r: 8 }} dot={{ r: 4 }} />
+                        </LineChart>
                       </ResponsiveContainer>
                     </div>
                   </div>
