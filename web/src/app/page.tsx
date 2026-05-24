@@ -4,12 +4,11 @@ import ClientDashboard from '@/components/ClientDashboard'
 export const revalidate = 0 
 
 export default async function Home() {
-  // Traemos todo en paralelo: pisos, tus favoritos y tu configuración
+  // Traemos todo en paralelo: pisos (activos e inactivos), tus favoritos y tu configuración
   const [propsRes, favsRes, configRes] = await Promise.all([
     supabase
       .from('properties')
       .select('*, price_history(price, recorded_at)')
-      .eq('active', true)
       .order('created_at', { ascending: false }),
     supabase
       .from('favorites')
@@ -38,7 +37,6 @@ export default async function Home() {
 
   return (
     <main className="min-h-screen bg-slate-100">
-      {/* Todo el contenido, incluido el header, lo gestiona el ClientDashboard para evitar solapamientos */}
       <ClientDashboard 
         properties={properties || []} 
         initialFavorites={favoriteIds}

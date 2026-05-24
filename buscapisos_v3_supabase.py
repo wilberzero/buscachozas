@@ -127,6 +127,19 @@ class IdealistaScraperSupabase:
 
                 response = self.supabase.table('properties').select('*').eq('external_id', external_id).execute()
                 
+                # Extraer anunciante/contacto
+                brand_elem = anuncio.select_one('.logo-branding img')
+                if brand_elem:
+                    contacto = brand_elem.get('title', brand_elem.get('alt', 'Empresa Profesional'))
+                else:
+                    contact_txt_elem = anuncio.select_one('.item-not-clickable-area span')
+                    contacto = contact_txt_elem.get_text().strip() if contact_txt_elem else "Anunciante Particular"
+
+                # Extraer detalles técnicos
+                details_elements = anuncio.select('.item-detail')
+                details_str = " | ".join([d.get_text().strip() for d in details_elements])
+                rooms, size_m2, floor = self._parsear_detalles(details_str)
+
                 if len(response.data) > 0:
                     prop = response.data[0]
                     db_id = prop['id']
@@ -144,15 +157,33 @@ class IdealistaScraperSupabase:
                             "is_fav": db_id in self.favorites_ids
                         })
 
-                    self.supabase.table('properties').update({"last_seen_at": datetime.now().isoformat(), "active": True}).eq('id', db_id).execute()
+                    # Actualizar last_seen_at, active, y el anunciante / detalles
+                    self.supabase.table('properties').update({
+                        "last_seen_at": datetime.now().isoformat(),
+                        "active": True,
+                        "advertiser": contacto,
+                        "rooms": rooms,
+                        "size_m2": size_m2,
+                        "floor": floor
+                    }).eq('id', db_id).execute()
                 else:
                     # Nuevo anuncio
                     tipo, direccion, barrio = self._parsear_titulo(link_elem.get_text().strip())
                     lat, lng = self._geocode_address(direccion)
                     prop_data = {
-                        "external_id": external_id, "title": link_elem.get_text().strip(),
-                        "type": tipo, "address": direccion, "neighborhood": barrio,
-                        "url": self.base_url + url_path, "active": True, "lat": lat, "lng": lng
+                        "external_id": external_id,
+                        "title": link_elem.get_text().strip(),
+                        "type": tipo,
+                        "address": direccion,
+                        "neighborhood": barrio,
+                        "url": self.base_url + url_path,
+                        "active": True,
+                        "lat": lat,
+                        "lng": lng,
+                        "advertiser": contacto,
+                        "rooms": rooms,
+                        "size_m2": size_m2,
+                        "floor": floor
                     }
                     res = self.supabase.table('properties').insert(prop_data).execute()
                     if res.data:
@@ -224,7 +255,14 @@ class IdealistaScraperSupabase:
 
             # NOTA: Para que esto funcione, el usuario debe poner sus datos SMTP en la tabla 'config'
             if self.user_config.get('smtp_user') and self.user_config.get('smtp_pass'):
-                server = smtplib.SMTP(self.user_config.get('smtp_server', 'smtp.gmail.com'), self.user_config.get('smtp_port', 587))
+                server_host = self.user_config.get('smtp_server') or 'smtp.gmail.com'
+                server_port = self.user_config.get('smtp_port') or 587
+                try:
+                    server_port = int(server_port)
+                except ValueError:
+                    server_port = 587
+
+                server = smtplib.SMTP(server_host, server_port)
                 server.starttls()
                 server.login(self.user_config['smtp_user'], self.user_config['smtp_pass'])
                 server.sendmail(self.user_config['smtp_user'], email_destino, msg.as_string())
@@ -241,14 +279,26 @@ class IdealistaScraperSupabase:
         resto = parts[1] if len(parts)>1 else ""
         z = resto.split(",")
         return tipo, z[0] if len(z)>0 else "", z[1] if len(z)>1 else ""
+    
     def _parsear_detalles(self, d):
         r, s, f = None, None, None
         if 'hab.' in d:
-            m = re.search(r'(\d+)', d)
+            m = re.search(r'(\d+)\s+hab\.', d)
             if m: r = int(m.group(1))
+            else:
+                m = re.search(r'(\d+)', d)
+                if m: r = int(m.group(1))
         if 'm²' in d:
-            m = re.search(r'([\d\.,]+)', d)
+            m = re.search(r'([\d\.,]+)\s+m²', d)
             if m: s = float(m.group(1).replace('.','').replace(',','.'))
+            else:
+                m = re.search(r'([\d\.,]+)', d)
+                if m: s = float(m.group(1).replace('.','').replace(',','.'))
+        
+        # Intentamos extraer planta/piso (ej: "Bajo", "Planta 1", "Planta 3", "Entreplanta")
+        m = re.search(r'(bajo|entreplanta|planta\s+\d+|principal|interior|exterior)', d, re.IGNORECASE)
+        if m:
+            f = m.group(1).capitalize()
         return r, s, f
 
 if __name__ == "__main__":
