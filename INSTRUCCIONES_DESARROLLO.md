@@ -17,9 +17,9 @@ Esta guía documenta la arquitectura técnica del proyecto, los accesos, y el fl
 - **Contenedor:** `antigravity_web` (ejecuta Webtop Ubuntu-XFCE en los puertos `3000`/`3001` de la Pi).
 - **Mapeo:** La carpeta `/home/adminpi/antigravity-data` del host está montada en `/config` dentro del contenedor.
 - **Frecuencia del Scraper:** 
-  - Se ejecuta **todos los días a las 17:05 CEST** (5:05 PM hora local española) mediante la tarea cron del contenedor.
+  - Se ejecuta **todos los días a las 08:00 CEST** (8:00 AM hora local española) mediante la tarea cron del contenedor.
   - **Crontab (dentro del contenedor):**
-    `05 17 * * * /lsiopy/bin/python3 /config/proyectos/buscapisos_v2/buscapisos_v3_supabase.py >> /config/proyectos/buscapisos_v2/scraper.log 2>&1`
+    `00 08 * * * /lsiopy/bin/python3 /config/proyectos/buscapisos_v2/buscapisos_v3_supabase.py >> /config/proyectos/buscapisos_v2/scraper.log 2>&1`
 - **Ejecución Manual:**
   Para forzar la ejecución del scraper en cualquier momento, ejecuta en la terminal de la Raspberry Pi:
   ```bash
@@ -31,7 +31,7 @@ Esta guía documenta la arquitectura técnica del proyecto, los accesos, y el fl
 ---
 
 ## ⚙️ Compilación Local de Next.js (Raspberry Pi Host)
-La Raspberry Pi tiene un Node.js (v24.14.0) instalado. Para probar y asegurar la compilación del frontend antes de desplegar, añade el path de Node y corre el build:
+La Raspberry Pi tiene un Node.js (v24.14.0) installed. Para probar y asegurar la compilación del frontend antes de desplegar, añade el path de Node y corre el build:
 ```bash
 export PATH=$PATH:/home/adminpi/antigravity-data/.nvm/versions/node/v24.14.0/bin
 cd /home/adminpi/antigravity-data/proyectos/buscapisos_v2/web

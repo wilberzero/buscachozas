@@ -23,18 +23,18 @@ def ejecutar_scraper():
     except Exception as e:
         print(f"[{datetime.now()}] ❌ Error lanzando el scraper: {e}")
 
-# Programar cada día a las 09:00
-schedule.every().day.at("09:00").do(ejecutar_scraper)
+# Programar cada día a las 08:00
+schedule.every().day.at("08:00").do(ejecutar_scraper)
 
 # Tarea de prueba para verificar que el lanzador está vivo (cada hora escribe un punto en consola)
 def keep_alive():
-    print(f"[{datetime.now()}] Lanzador activo y esperando a las 09:00...")
+    print(f"[{datetime.now()}] Lanzador activo y esperando a las 08:00...")
 
 schedule.every().hour.do(keep_alive)
 
 print(f"[*] Lanzador de BuscaChozas activado.")
 print(f"[*] Hora actual del sistema: {datetime.now()}")
-print(f"[*] Próxima ejecución programada: Todas las mañanas a las 09:00.")
+print(f"[*] Próxima ejecución programada: Todas las mañanas a las 08:00.")
 
 # El bucle principal esperará a la hora señalada
 while True:
