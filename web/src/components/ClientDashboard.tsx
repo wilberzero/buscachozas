@@ -30,7 +30,13 @@ export default function ClientDashboard({
   const [listSortBy, setListSortBy] = useState<'created-desc' | 'price-asc' | 'price-desc' | 'rooms-asc' | 'rooms-desc' | 'size-asc' | 'size-desc'>('created-desc')
   
   // Ajustes de Usuario
-  const [config, setConfig] = useState(initialConfig)
+  const [config, setConfig] = useState(() => {
+    const cfg = { ...initialConfig }
+    if (!cfg.scraper_url) {
+      cfg.scraper_url = 'https://www.idealista.com/venta-viviendas/burgos-burgos/con-precio-hasta_300000,metros-cuadrados-mas-de_100,de-tres-dormitorios,de-cuatro-cinco-habitaciones-o-mas,dos-banos,tres-banos-o-mas/'
+    }
+    return cfg
+  })
   const [isSavingConfig, setIsSavingConfig] = useState(false)
 
   // Filtros Avanzados (Solo aplican para activos y de manera general)
@@ -163,7 +169,13 @@ export default function ClientDashboard({
 
   // Propiedades Inactivas (Bajas)
   const inactiveProperties = useMemo(() => {
-    return allPropertiesParsed.filter(p => !p.active)
+    return allPropertiesParsed
+      .filter(p => !p.active)
+      .sort((a, b) => {
+        const dateA = a.last_seen_at ? new Date(a.last_seen_at).getTime() : 0
+        const dateB = b.last_seen_at ? new Date(b.last_seen_at).getTime() : 0
+        return dateB - dateA
+      })
   }, [allPropertiesParsed])
 
   // --- ESTADÍSTICAS Y MÉTRICAS DE MERCADO ---
@@ -285,7 +297,7 @@ export default function ClientDashboard({
             </div>
             <div className="flex items-baseline gap-2">
               <h1 className="text-2xl font-black text-slate-800 tracking-tight">BuscaChozas</h1>
-              <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md tracking-widest">v1.2.1</span>
+              <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md tracking-widest">v1.2.2</span>
             </div>
           </div>
           
@@ -522,7 +534,7 @@ export default function ClientDashboard({
                       </div>
                     </div>
 
-                    <div className="p-6 sm:p-8 flex-grow space-y-6">
+                    <div className="p-6 sm:p-8 pt-16 sm:pt-20 flex-grow space-y-6">
                       <div className="space-y-2">
                         <span className="inline-block text-[9px] font-black tracking-widest text-blue-600 bg-blue-50 px-3 py-1 rounded-full uppercase">
                           {piso.type || 'Piso'}
@@ -656,7 +668,7 @@ export default function ClientDashboard({
                         <Trash2 className="w-3.5 h-3.5" /> FUERA DE MERCADO
                       </div>
 
-                      <div className="p-6 sm:p-8 flex-grow space-y-6">
+                      <div className="p-6 sm:p-8 pt-16 sm:pt-20 flex-grow space-y-6">
                         <div className="space-y-2 pt-6">
                           <span className="inline-block text-[9px] font-black tracking-widest text-slate-600 bg-slate-100 px-3 py-1 rounded-full uppercase">
                             {piso.type || 'Piso'}
@@ -968,6 +980,11 @@ export default function ClientDashboard({
                             <div className="flex flex-col text-right">
                               <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Precio Anterior</span>
                               <span className="text-xs font-bold text-slate-500 line-through">{piso.lastPrice.toLocaleString('es-ES')}€</span>
+                              {piso.sortedHist.length > 1 && (
+                                <span className="text-[8px] text-slate-400 font-bold mt-0.5 leading-none">
+                                  ({format(new Date(piso.sortedHist[piso.sortedHist.length - 2].recorded_at), "dd/MM/yyyy")})
+                                </span>
+                              )}
                             </div>
                             <div className="flex flex-col text-right">
                               <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Precio Nuevo</span>
@@ -1019,7 +1036,7 @@ export default function ClientDashboard({
                   value={config.scraper_url || ''}
                   onChange={(e) => setConfig({...config, scraper_url: e.target.value})}
                 />
-                <p className="text-[9px] text-slate-400 italic ml-1">* El bot usará esta URL cada mañana a las 09:00.</p>
+                <p className="text-[9px] text-slate-400 italic ml-1">* El bot usará esta URL cada mañana a las 08:00.</p>
               </div>
 
               <div className="space-y-2">

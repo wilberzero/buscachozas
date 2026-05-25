@@ -212,7 +212,12 @@ class IdealistaScraperSupabase:
                             "is_fav": p['id'] in self.favorites_ids
                         })
                         print(f"[!] Baja confirmada: {p['title']}")
-                except: pass
+                    else:
+                        # Si sigue activo, actualizamos last_seen_at para que coincida con el día verificado
+                        self.supabase.table('properties').update({"last_seen_at": datetime.now().isoformat()}).eq('id', p['id']).execute()
+                        print(f"[*] Baja descartada (sigue activo): {p['title']}")
+                except Exception as e:
+                    print(f"[!] Error verificando baja de {p['title']}: {e}")
 
     def _enviar_notificaciones(self):
         email_destino = self.user_config.get('alert_email')
