@@ -285,7 +285,7 @@ export default function ClientDashboard({
             </div>
             <div className="flex items-baseline gap-2">
               <h1 className="text-2xl font-black text-slate-800 tracking-tight">BuscaChozas</h1>
-              <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md tracking-widest">v1.2.0</span>
+              <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md tracking-widest">v1.2.1</span>
             </div>
           </div>
           
@@ -508,13 +508,19 @@ export default function ClientDashboard({
                       <Heart className={`w-5 h-5 sm:w-6 sm:h-6 ${isFav ? 'fill-rose-600 text-rose-600' : 'text-slate-300 group-hover:text-rose-400'}`} />
                     </button>
 
-                    {/* Badge de Variación de Precio */}
-                    {piso.priceDiff !== 0 && (
-                      <div className={`absolute top-4 left-4 sm:top-6 sm:left-6 z-10 px-4 py-2 rounded-2xl text-[9px] font-black tracking-widest shadow-md flex items-center gap-1 ${piso.priceDiff < 0 ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
-                        {piso.priceDiff < 0 ? <TrendingDown className="w-3.5 h-3.5" /> : <TrendingUp className="w-3.5 h-3.5" />}
-                        {piso.priceDiff < 0 ? 'REBAJADO' : 'SUBIDO'} {Math.abs(piso.priceDiff).toLocaleString('es-ES')}€
+                    {/* Badges de Estado (Esquina Superior Izquierda) */}
+                    <div className="absolute top-4 left-4 sm:top-6 sm:left-6 z-10 flex flex-col gap-2 pointer-events-none">
+                      {piso.priceDiff !== 0 && (
+                        <div className={`px-3 py-1.5 rounded-xl text-[8px] sm:text-[9px] font-black tracking-widest shadow-md flex items-center gap-1 w-fit ${piso.priceDiff < 0 ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
+                          {piso.priceDiff < 0 ? <TrendingDown className="w-3 h-3" /> : <TrendingUp className="w-3 h-3" />}
+                          {piso.priceDiff < 0 ? 'REBAJADO' : 'SUBIDO'} {Math.abs(piso.priceDiff).toLocaleString('es-ES')}€
+                        </div>
+                      )}
+                      <div className="bg-slate-900/75 backdrop-blur-md text-white px-2.5 py-1 rounded-lg text-[8px] font-black tracking-widest shadow-sm flex items-center gap-1 w-fit border border-slate-700/50">
+                        <Calendar className="w-2.5 h-2.5 text-blue-400" />
+                        REVISADO {piso.last_seen_at ? formatDistanceToNow(new Date(piso.last_seen_at), { addSuffix: true, locale: es }).toUpperCase() : 'HOY'}
                       </div>
-                    )}
+                    </div>
 
                     <div className="p-6 sm:p-8 flex-grow space-y-6">
                       <div className="space-y-2">
