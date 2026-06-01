@@ -318,7 +318,7 @@ export default function ClientDashboard({
             </div>
             <div className="flex items-baseline gap-2">
               <h1 className="text-2xl font-black text-slate-800 tracking-tight">BuscaChozas</h1>
-              <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md tracking-widest">v1.3.0</span>
+              <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md tracking-widest">v1.3.1</span>
             </div>
           </div>
           
@@ -1002,10 +1002,10 @@ export default function ClientDashboard({
                           >
                             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                               <div className="space-y-1.5 flex-grow w-full lg:w-auto">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <span className="text-[8px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded uppercase">{piso.neighborhood || 'Burgos'}</span>
+                                <div className="flex flex-wrap items-center gap-2.5">
+                                  <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-2.5 py-1 rounded-md uppercase">{piso.neighborhood || 'Burgos'}</span>
                                   {piso.totalPriceDiff !== 0 && (
-                                    <span className={`text-[8px] font-black px-2 py-0.5 rounded uppercase ${piso.totalPriceDiff < 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                                    <span className={`text-[10px] sm:text-[11px] font-extrabold px-3 py-1 rounded-md uppercase tracking-wider ${piso.totalPriceDiff < 0 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'}`}>
                                       Rebaja Total: {piso.totalPriceDiff < 0 ? '📉' : '📈'} {Math.abs(piso.totalPriceDiff).toLocaleString('es-ES')}€ ({Math.round((piso.totalPriceDiff / piso.initialPrice) * 100)}%)
                                     </span>
                                   )}

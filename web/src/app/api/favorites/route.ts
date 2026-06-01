@@ -18,7 +18,10 @@ export async function POST(request: Request) {
     } else {
       const { error } = await supabase
         .from('favorites')
-        .insert({ property_id: propertyId })
+        .insert({ 
+          property_id: propertyId,
+          user_id: '5b310e9c-efc4-4cf5-a084-246ec52849da' // Soluciona el constraint not-null de user_id
+        })
       
       if (error) throw error
     }
