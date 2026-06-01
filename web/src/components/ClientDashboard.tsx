@@ -319,7 +319,7 @@ export default function ClientDashboard({
             </div>
             <div className="flex items-baseline gap-2">
               <h1 className="text-2xl font-black text-slate-800 tracking-tight">BuscaChozas</h1>
-              <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md tracking-widest">v1.3.2</span>
+              <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md tracking-widest">v1.3.4</span>
             </div>
           </div>
           
@@ -1030,7 +1030,7 @@ export default function ClientDashboard({
                                   <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-2.5 py-1 rounded-md uppercase">{piso.neighborhood || 'Burgos'}</span>
                                   {piso.totalPriceDiff !== 0 && (
                                     <span className={`text-[10px] sm:text-[11px] font-extrabold px-3 py-1 rounded-md uppercase tracking-wider ${piso.totalPriceDiff < 0 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'}`}>
-                                      Rebaja Total: {piso.totalPriceDiff < 0 ? '📉' : '📈'} {Math.abs(piso.totalPriceDiff).toLocaleString('es-ES')}€ ({Math.round((piso.totalPriceDiff / piso.initialPrice) * 100)}%)
+                                      {piso.totalPriceDiff < 0 ? 'Rebaja Total:' : 'Subida Total:'} {piso.totalPriceDiff < 0 ? '📉' : '📈'} {Math.abs(piso.totalPriceDiff).toLocaleString('es-ES')}€ ({Math.round((piso.totalPriceDiff / piso.initialPrice) * 100)}%)
                                     </span>
                                   )}
                                 </div>
