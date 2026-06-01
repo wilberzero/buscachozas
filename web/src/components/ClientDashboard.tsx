@@ -26,7 +26,8 @@ export default function ClientDashboard({
   const [showOnlyFavs, setShowOnlyFavs] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
-  const [statsSortBy, setStatsSortBy] = useState<'diff' | 'price-asc' | 'price-desc'>('diff')
+  const [statsSortBy, setStatsSortBy] = useState<'total-diff-desc' | 'total-diff-asc' | 'last-diff-desc' | 'last-diff-asc' | 'price-asc' | 'price-desc'>('total-diff-desc')
+  const [expandedStatsPrices, setExpandedStatsPrices] = useState<string[]>([])
   const [listSortBy, setListSortBy] = useState<'created-desc' | 'price-asc' | 'price-desc' | 'rooms-asc' | 'rooms-desc' | 'size-asc' | 'size-desc'>('created-desc')
   
   // Ajustes de Usuario
@@ -57,10 +58,15 @@ export default function ClientDashboard({
     )
 
     try {
-      if (isFav) {
-        await supabase.from('favorites').delete().eq('property_id', id)
-      } else {
-        await supabase.from('favorites').insert({ property_id: id })
+      const res = await fetch('/api/favorites', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ propertyId: id, action: isFav ? 'delete' : 'insert' })
+      })
+      if (!res.ok) {
+        throw new Error('Failed to update favorite on server')
       }
     } catch (error) {
       console.error('Error actualizando favoritos:', error)
@@ -98,19 +104,29 @@ export default function ClientDashboard({
     )
   }
 
+  const toggleExpandStatsPrice = (id: string) => {
+    setExpandedStatsPrices(prev => 
+      prev.includes(id) ? prev.filter(pId => pId !== id) : [...prev, id]
+    )
+  }
+
   // Filtrado General de Propiedades
   const allPropertiesParsed = useMemo(() => {
     return properties.map(p => {
       const hist = [...(p.price_history || [])].sort((a,b) => new Date(a.recorded_at).getTime() - new Date(b.recorded_at).getTime())
       const currentPrice = hist.length > 0 ? hist[hist.length-1].price : 0
       const lastPrice = hist.length > 1 ? hist[hist.length-2].price : currentPrice
-      const priceDiff = currentPrice - lastPrice
+      const initialPrice = hist.length > 0 ? hist[0].price : currentPrice
+      const priceDiff = currentPrice - lastPrice // Rebaja parcial (último cambio)
+      const totalPriceDiff = currentPrice - initialPrice // Rebaja total
       const pricePerM2 = p.size_m2 ? Math.round(currentPrice / p.size_m2) : 0
       return {
         ...p,
         currentPrice,
         lastPrice,
+        initialPrice,
         priceDiff,
+        totalPriceDiff,
         pricePerM2,
         sortedHist: hist
       }
@@ -231,18 +247,23 @@ export default function ClientDashboard({
 
   // Variaciones de precios ordenadas para estadísticas
   const sortedVariations = useMemo(() => {
-    const variations = allPropertiesParsed.filter(p => p.active && p.priceDiff !== 0)
-    if (statsSortBy === 'diff') {
-      return [...variations].sort((a, b) => {
-        if (a.priceDiff < 0 && b.priceDiff > 0) return -1
-        if (a.priceDiff > 0 && b.priceDiff < 0) return 1
-        return Math.abs(b.priceDiff) - Math.abs(a.priceDiff)
-      })
-    } else if (statsSortBy === 'price-asc') {
-      return [...variations].sort((a, b) => a.currentPrice - b.currentPrice)
-    } else {
-      return [...variations].sort((a, b) => b.currentPrice - a.currentPrice)
-    }
+    const variations = allPropertiesParsed.filter(p => p.active && p.sortedHist.length > 1)
+    
+    return [...variations].sort((a, b) => {
+      if (statsSortBy === 'total-diff-desc') {
+        return a.totalPriceDiff - b.totalPriceDiff // Mayor rebaja total primero (más negativo)
+      } else if (statsSortBy === 'total-diff-asc') {
+        return b.totalPriceDiff - a.totalPriceDiff // Menor rebaja total primero
+      } else if (statsSortBy === 'last-diff-desc') {
+        return a.priceDiff - b.priceDiff // Mayor rebaja parcial primero (más negativo)
+      } else if (statsSortBy === 'last-diff-asc') {
+        return b.priceDiff - a.priceDiff // Menor rebaja parcial primero
+      } else if (statsSortBy === 'price-asc') {
+        return a.currentPrice - b.currentPrice
+      } else {
+        return b.currentPrice - a.currentPrice
+      }
+    })
   }, [allPropertiesParsed, statsSortBy])
 
   // Datos para los gráficos de tendencias (Evolución de precios e €/m2)
@@ -297,7 +318,7 @@ export default function ClientDashboard({
             </div>
             <div className="flex items-baseline gap-2">
               <h1 className="text-2xl font-black text-slate-800 tracking-tight">BuscaChozas</h1>
-              <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md tracking-widest">v1.2.2</span>
+              <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md tracking-widest">v1.3.0</span>
             </div>
           </div>
           
@@ -934,26 +955,35 @@ export default function ClientDashboard({
 
                 {/* 3. EVOLUCIÓN HISTÓRICA & REBAJAS */}
                 <div className="bg-white p-6 sm:p-8 rounded-[40px] shadow-2xl border border-slate-100">
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pb-4 border-b border-slate-100">
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 pb-4 border-b border-slate-100">
                     <div>
                       <h3 className="text-base sm:text-lg font-black text-slate-800 tracking-tight">Oportunidades y Rebajas</h3>
                       <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1">Viviendas que han bajado o cambiado de precio en Burgos</p>
                     </div>
                     
-                    {/* Controles de Ordenación */}
-                    <div className="flex items-center gap-2 bg-slate-105/50 border border-slate-200/50 p-1 rounded-xl">
+                    {/* Controles de Ordenación Avanzados */}
+                    <div className="flex flex-wrap items-center gap-2 bg-slate-100 p-1.5 rounded-2xl border border-slate-200/60 text-xs font-bold w-full md:w-auto">
                       <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest px-2">Ordenar por:</span>
-                      <button 
-                        onClick={() => setStatsSortBy('diff')}
-                        className={`px-3 py-1.5 rounded-lg text-[9px] font-black tracking-wider transition-all ${statsSortBy === 'diff' ? 'bg-slate-200 text-blue-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
-                      >
-                        MAYOR REBAJA
-                      </button>
+                      
                       <button 
                         onClick={() => setStatsSortBy(statsSortBy === 'price-asc' ? 'price-desc' : 'price-asc')}
-                        className={`px-3 py-1.5 rounded-lg text-[9px] font-black tracking-wider transition-all ${statsSortBy.startsWith('price') ? 'bg-slate-200 text-blue-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                        className={`px-3 py-2 rounded-xl text-[9px] font-black tracking-wider transition-all flex items-center gap-1.5 ${statsSortBy.startsWith('price') ? 'bg-white text-blue-700 shadow-sm border border-slate-200/40' : 'text-slate-500 hover:text-slate-800'}`}
                       >
                         PRECIO {statsSortBy === 'price-asc' ? '↑' : statsSortBy === 'price-desc' ? '↓' : ''}
+                      </button>
+
+                      <button 
+                        onClick={() => setStatsSortBy(statsSortBy === 'last-diff-desc' ? 'last-diff-asc' : 'last-diff-desc')}
+                        className={`px-3 py-2 rounded-xl text-[9px] font-black tracking-wider transition-all flex items-center gap-1.5 ${statsSortBy.startsWith('last-diff') ? 'bg-white text-emerald-700 shadow-sm border border-slate-200/40' : 'text-slate-500 hover:text-slate-800'}`}
+                      >
+                        REBAJA PARCIAL {statsSortBy === 'last-diff-desc' ? '↓' : statsSortBy === 'last-diff-asc' ? '↑' : ''}
+                      </button>
+
+                      <button 
+                        onClick={() => setStatsSortBy(statsSortBy === 'total-diff-desc' ? 'total-diff-asc' : 'total-diff-desc')}
+                        className={`px-3 py-2 rounded-xl text-[9px] font-black tracking-wider transition-all flex items-center gap-1.5 ${statsSortBy.startsWith('total-diff') ? 'bg-white text-indigo-700 shadow-sm border border-slate-200/40' : 'text-slate-500 hover:text-slate-800'}`}
+                      >
+                        REBAJA TOTAL {statsSortBy === 'total-diff-desc' ? '↓' : statsSortBy === 'total-diff-asc' ? '↑' : ''}
                       </button>
                     </div>
                   </div>
@@ -963,40 +993,100 @@ export default function ClientDashboard({
                     {sortedVariations.length === 0 ? (
                       <p className="text-slate-400 text-xs font-bold text-center py-8 uppercase tracking-widest italic">Aún no se registran variaciones de precio en esta zona</p>
                     ) : (
-                      sortedVariations.map((piso) => (
-                        <a 
-                          key={piso.id} 
-                          href={piso.url} 
-                          target="_blank" 
-                          rel="noopener noreferrer" 
-                          className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 bg-slate-50 hover:bg-blue-50/50 hover:border-blue-200 border border-slate-100 rounded-3xl transition-all gap-4 group cursor-pointer block"
-                        >
-                          <div className="space-y-1">
-                            <span className="text-[8px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded uppercase">{piso.neighborhood || 'Burgos'}</span>
-                            <h4 className="text-xs sm:text-sm font-black text-slate-850 leading-snug group-hover:text-blue-700 transition-colors">{piso.title}</h4>
+                      sortedVariations.map((piso) => {
+                        const isExpanded = expandedStatsPrices.includes(piso.id)
+                        return (
+                          <div 
+                            key={piso.id} 
+                            className="bg-slate-50 border border-slate-200/70 rounded-3xl p-5 hover:border-slate-350 transition-all space-y-4 shadow-sm"
+                          >
+                            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                              <div className="space-y-1.5 flex-grow w-full lg:w-auto">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="text-[8px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded uppercase">{piso.neighborhood || 'Burgos'}</span>
+                                  {piso.totalPriceDiff !== 0 && (
+                                    <span className={`text-[8px] font-black px-2 py-0.5 rounded uppercase ${piso.totalPriceDiff < 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                                      Rebaja Total: {piso.totalPriceDiff < 0 ? '📉' : '📈'} {Math.abs(piso.totalPriceDiff).toLocaleString('es-ES')}€ ({Math.round((piso.totalPriceDiff / piso.initialPrice) * 100)}%)
+                                    </span>
+                                  )}
+                                </div>
+                                <h4 className="text-xs sm:text-sm font-black text-slate-850 leading-snug hover:text-blue-700 transition-colors">
+                                  <a href={piso.url} target="_blank" rel="noopener noreferrer" className="hover:underline">{piso.title}</a>
+                                </h4>
+                              </div>
+
+                              <div className="flex flex-wrap items-center gap-4 sm:gap-6 w-full lg:w-auto justify-between lg:justify-end border-t border-slate-200/40 pt-3 lg:border-t-0 lg:pt-0">
+                                <div className="flex flex-col text-right">
+                                  <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Precio Inicial</span>
+                                  <span className="text-xs font-black text-slate-500 leading-none mt-1">{piso.initialPrice.toLocaleString('es-ES')}€</span>
+                                </div>
+                                
+                                {piso.priceDiff !== 0 && (
+                                  <div className="flex flex-col text-right">
+                                    <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Último Cambio</span>
+                                    <span className={`text-xs font-black leading-none mt-1 ${piso.priceDiff < 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                      {piso.priceDiff < 0 ? '-' : '+'}{Math.abs(piso.priceDiff).toLocaleString('es-ES')}€
+                                    </span>
+                                  </div>
+                                )}
+
+                                <div className="flex flex-col text-right">
+                                  <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Precio Actual</span>
+                                  <span className="text-sm font-black text-slate-800 leading-none mt-1">{piso.currentPrice.toLocaleString('es-ES')}€</span>
+                                </div>
+
+                                <div className="flex items-center gap-2 ml-auto lg:ml-0">
+                                  <button 
+                                    onClick={() => toggleExpandStatsPrice(piso.id)}
+                                    className="px-3.5 py-2 bg-slate-200/80 hover:bg-slate-200 text-slate-700 rounded-xl text-[9px] font-black tracking-widest uppercase transition-all flex items-center gap-1.5"
+                                  >
+                                    <span>Historial</span>
+                                    {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                                  </button>
+                                  <a 
+                                    href={piso.url} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="p-2 bg-blue-50 text-blue-700 hover:bg-blue-600 hover:text-white rounded-xl transition-all border border-blue-100/50"
+                                    title="Ver en portal"
+                                  >
+                                    <ArrowRight className="w-4 h-4" />
+                                  </a>
+                                </div>
+                              </div>
+                            </div>
+
+                            {isExpanded && (
+                              <div className="bg-white border border-slate-200/70 rounded-2xl p-4 sm:p-5 space-y-2.5 animate-in slide-in-from-top-4 duration-300">
+                                <h5 className="text-[8px] font-black text-slate-400 uppercase tracking-widest pb-1.5 border-b border-slate-100">Desglose completo de precios</h5>
+                                {piso.sortedHist.map((h: any, idx: number) => {
+                                  const isOriginal = idx === 0
+                                  const prevPrice = idx > 0 ? piso.sortedHist[idx-1].price : h.price
+                                  const diff = h.price - prevPrice
+                                  return (
+                                    <div key={h.recorded_at} className="flex justify-between items-center py-1.5 px-2 rounded-lg hover:bg-slate-50 transition-all text-xs">
+                                      <div className="flex flex-col">
+                                        <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">
+                                          {format(new Date(h.recorded_at), "dd MMMM yyyy", { locale: es })}
+                                        </span>
+                                        {isOriginal && <span className="text-[8px] font-bold text-blue-600 uppercase mt-0.5 leading-none">Precio de salida</span>}
+                                        {!isOriginal && (
+                                          <span className={`text-[8px] font-bold uppercase mt-0.5 leading-none ${diff < 0 ? 'text-emerald-600' : diff > 0 ? 'text-rose-600' : 'text-slate-400'}`}>
+                                            {diff < 0 ? 'Rebaja' : diff > 0 ? 'Subida' : 'Mantener'} {diff !== 0 && `(${diff > 0 ? '+' : ''}${diff.toLocaleString('es-ES')}€)`}
+                                          </span>
+                                        )}
+                                      </div>
+                                      <span className="font-black text-slate-700">
+                                        {h.price.toLocaleString('es-ES')}€
+                                      </span>
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            )}
                           </div>
-                          
-                          <div className="flex items-center gap-6">
-                            <div className="flex flex-col text-right">
-                              <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Precio Anterior</span>
-                              <span className="text-xs font-bold text-slate-500 line-through">{piso.lastPrice.toLocaleString('es-ES')}€</span>
-                              {piso.sortedHist.length > 1 && (
-                                <span className="text-[8px] text-slate-400 font-bold mt-0.5 leading-none">
-                                  ({format(new Date(piso.sortedHist[piso.sortedHist.length - 2].recorded_at), "dd/MM/yyyy")})
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex flex-col text-right">
-                              <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Precio Nuevo</span>
-                              <span className="text-sm font-black text-slate-800">{piso.currentPrice.toLocaleString('es-ES')}€</span>
-                            </div>
-                            <div className={`px-4 py-2 rounded-xl text-[9px] font-black tracking-widest flex items-center gap-1 ${piso.priceDiff < 0 ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
-                              {piso.priceDiff < 0 ? <TrendingDown className="w-3.5 h-3.5" /> : <TrendingUp className="w-3.5 h-3.5" />}
-                              {Math.abs(piso.priceDiff).toLocaleString('es-ES')}€
-                            </div>
-                          </div>
-                        </a>
-                      ))
+                        )
+                      })
                     )}
                   </div>
                 </div>

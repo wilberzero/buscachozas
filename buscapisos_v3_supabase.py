@@ -57,6 +57,21 @@ class IdealistaScraperSupabase:
         except: pass
         return None, None
 
+    def _scrape_real_coords(self, url):
+        try:
+            # Esperar un poco para ser respetuosos y evitar bloqueos
+            time.sleep(random.uniform(2, 4))
+            res = self.session.get(url, headers=self.headers, impersonate="safari15_5", timeout=20)
+            if res.status_code == 200:
+                match = re.search(r'staticmap\?[^"\']*center=(-?\d+\.\d+)(?:%2C|,)(-?\d+\.\d+)', res.text)
+                if match:
+                    lat = float(match.group(1))
+                    lng = float(match.group(2))
+                    return lat, lng
+        except Exception as e:
+            print(f"[!] Error scrapeando coordenadas reales de {url}: {e}")
+        return None, None
+
     def _cargar_configuracion(self):
         try:
             res = self.supabase.table('config').select('*').eq('id', 1).execute()
@@ -157,9 +172,19 @@ class IdealistaScraperSupabase:
                             "is_fav": db_id in self.favorites_ids
                         })
 
+                    # ¿Tiene coordenadas guardadas? Si no, intentar obtenerlas reales del mapa
+                    if not prop.get('lat') or not prop.get('lng'):
+                        real_lat, real_lng = self._scrape_real_coords(prop['url'])
+                        if real_lat and real_lng:
+                            self.supabase.table('properties').update({
+                                "lat": real_lat,
+                                "lng": real_lng
+                            }).eq('id', db_id).execute()
+                            print(f"[+] Coordenadas reales obtenidas para existente: {prop['title']} -> {real_lat}, {real_lng}")
+
                     # Actualizar last_seen_at, active, y el anunciante / detalles
                     self.supabase.table('properties').update({
-                        "last_seen_at": datetime.now().isoformat(),
+                        "last_seen_at": datetime.utcnow().isoformat() + "Z",
                         "active": True,
                         "advertiser": contacto,
                         "rooms": rooms,
@@ -169,14 +194,21 @@ class IdealistaScraperSupabase:
                 else:
                     # Nuevo anuncio
                     tipo, direccion, barrio = self._parsear_titulo(link_elem.get_text().strip())
-                    lat, lng = self._geocode_address(direccion)
+                    url_completa = self.base_url + url_path
+                    lat, lng = self._scrape_real_coords(url_completa)
+                    if not lat or not lng:
+                        lat, lng = self._geocode_address(direccion)
+                        print(f"[!] Coordenadas reales no disponibles, usando Nominatim para: {direccion}")
+                    else:
+                        print(f"[+] Coordenadas reales obtenidas para nuevo: {link_elem.get_text().strip()} -> {lat}, {lng}")
+
                     prop_data = {
                         "external_id": external_id,
                         "title": link_elem.get_text().strip(),
                         "type": tipo,
                         "address": direccion,
                         "neighborhood": barrio,
-                        "url": self.base_url + url_path,
+                        "url": url_completa,
                         "active": True,
                         "lat": lat,
                         "lng": lng,
@@ -214,7 +246,7 @@ class IdealistaScraperSupabase:
                         print(f"[!] Baja confirmada: {p['title']}")
                     else:
                         # Si sigue activo, actualizamos last_seen_at para que coincida con el día verificado
-                        self.supabase.table('properties').update({"last_seen_at": datetime.now().isoformat()}).eq('id', p['id']).execute()
+                        self.supabase.table('properties').update({"last_seen_at": datetime.utcnow().isoformat() + "Z"}).eq('id', p['id']).execute()
                         print(f"[*] Baja descartada (sigue activo): {p['title']}")
                 except Exception as e:
                     print(f"[!] Error verificando baja de {p['title']}: {e}")
