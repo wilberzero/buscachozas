@@ -268,12 +268,17 @@ export default function Map({
             ? [coordsMap[piso.id][0] + (randomFunc() - 0.5) * offset, coordsMap[piso.id][1] + (randomFunc() - 0.5) * offset]
             : [fallbackPos[0] + (randomFunc() - 0.5) * offset, fallbackPos[1] + (randomFunc() - 0.5) * offset]
 
+          const sortedHistory = [...(piso.price_history || [])].sort((a: any, b: any) => 
+            new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime()
+          )
+          const precioActual = sortedHistory[0]?.price || 0
+
           return (
             <PropertyMarker 
               key={piso.id} 
               piso={piso} 
               pos={pos} 
-              icon={createPriceIcon(0)} // createPriceIcon se llama dentro de PropertyMarker ahora con el precio correcto
+              icon={createPriceIcon(precioActual)}
               selectedPropertyId={selectedPropertyId}
             />
           )

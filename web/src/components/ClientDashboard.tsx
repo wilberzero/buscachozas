@@ -468,7 +468,10 @@ export default function ClientDashboard({
                 <List className="w-3.5 h-3.5" /> LISTADO
               </button>
               <button 
-                onClick={() => setView('map')}
+                onClick={() => {
+                  setSelectedPropertyId(null)
+                  setView('map')
+                }}
                 className={`flex-grow sm:flex-none flex items-center justify-center gap-2 px-6 sm:px-8 py-2.5 rounded-full text-[10px] font-black tracking-widest transition-all duration-300 ${view === 'map' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
               >
                 <MapIcon className="w-3.5 h-3.5" /> MAPA
