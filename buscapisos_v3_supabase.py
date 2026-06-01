@@ -39,6 +39,18 @@ class IdealistaScraperSupabase:
         self.favorites_ids = []
         self.user_config = {}
 
+        # Caché persistente local de ubicaciones reales obtenidas de Idealista
+        self.real_loc_file = os.path.join(os.path.dirname(__file__), 'real_locations.json')
+        self.real_locations = {}
+        if os.path.exists(self.real_loc_file):
+            try:
+                with open(self.real_loc_file, 'r') as f:
+                    self.real_locations = json.load(f)
+            except Exception as e:
+                print(f"[!] Error cargando real_locations.json: {e}")
+        self.real_resolve_count = 0
+        self.max_real_resolves = 15 # Límite para evitar bloqueos por exceso de peticiones por corrida
+
     def _geocode_address(self, address):
         if not address: return None, None
         if address in self.geocode_cache: return self.geocode_cache[address]
@@ -71,6 +83,13 @@ class IdealistaScraperSupabase:
         except Exception as e:
             print(f"[!] Error scrapeando coordenadas reales de {url}: {e}")
         return None, None
+
+    def _guardar_real_locations(self):
+        try:
+            with open(self.real_loc_file, 'w') as f:
+                json.dump(self.real_locations, f, indent=4)
+        except Exception as e:
+            print(f"[!] Error guardando real_locations.json: {e}")
 
     def _cargar_configuracion(self):
         try:
@@ -172,15 +191,32 @@ class IdealistaScraperSupabase:
                             "is_fav": db_id in self.favorites_ids
                         })
 
-                    # ¿Tiene coordenadas guardadas? Si no, intentar obtenerlas reales del mapa
-                    if not prop.get('lat') or not prop.get('lng'):
+                    # ¿Tiene coordenadas reales guardadas? Si no, intentar obtenerlas
+                    needs_real = not prop.get('lat') or not prop.get('lng') or str(external_id) not in self.real_locations
+                    
+                    if needs_real and self.real_resolve_count < self.max_real_resolves:
+                        print(f"[*] Obteniendo ubicación real para existente ({self.real_resolve_count + 1}/{self.max_real_resolves}): {prop['title']}")
                         real_lat, real_lng = self._scrape_real_coords(prop['url'])
                         if real_lat and real_lng:
                             self.supabase.table('properties').update({
                                 "lat": real_lat,
                                 "lng": real_lng
                             }).eq('id', db_id).execute()
+                            
+                            self.real_locations[str(external_id)] = {"lat": real_lat, "lng": real_lng, "scraped_at": datetime.utcnow().isoformat()}
+                            self._guardar_real_locations()
+                            self.real_resolve_count += 1
                             print(f"[+] Coordenadas reales obtenidas para existente: {prop['title']} -> {real_lat}, {real_lng}")
+                        else:
+                            print(f"[!] No se pudo obtener ubicación real para: {prop['title']}")
+                    elif str(external_id) in self.real_locations and (not prop.get('lat') or not prop.get('lng')):
+                        # Restaurar de caché local si se borraron de la BD
+                        cached = self.real_locations[str(external_id)]
+                        self.supabase.table('properties').update({
+                            "lat": cached['lat'],
+                            "lng": cached['lng']
+                        }).eq('id', db_id).execute()
+                        print(f"[+] Coordenadas restauradas de caché para existente: {prop['title']}")
 
                     # Actualizar last_seen_at, active, y el anunciante / detalles
                     self.supabase.table('properties').update({
@@ -200,6 +236,8 @@ class IdealistaScraperSupabase:
                         lat, lng = self._geocode_address(direccion)
                         print(f"[!] Coordenadas reales no disponibles, usando Nominatim para: {direccion}")
                     else:
+                        self.real_locations[str(external_id)] = {"lat": lat, "lng": lng, "scraped_at": datetime.utcnow().isoformat()}
+                        self._guardar_real_locations()
                         print(f"[+] Coordenadas reales obtenidas para nuevo: {link_elem.get_text().strip()} -> {lat}, {lng}")
 
                     prop_data = {
