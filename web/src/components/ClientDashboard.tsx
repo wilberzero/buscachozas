@@ -23,6 +23,7 @@ export default function ClientDashboard({
   const [currentTab, setCurrentTab] = useState<'actives' | 'inactives' | 'stats'>('actives')
   const [view, setView] = useState<'list' | 'map'>('list')
   const [favorites, setFavorites] = useState<string[]>(initialFavorites)
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null)
   const [showOnlyFavs, setShowOnlyFavs] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
@@ -318,7 +319,7 @@ export default function ClientDashboard({
             </div>
             <div className="flex items-baseline gap-2">
               <h1 className="text-2xl font-black text-slate-800 tracking-tight">BuscaChozas</h1>
-              <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md tracking-widest">v1.3.1</span>
+              <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md tracking-widest">v1.3.2</span>
             </div>
           </div>
           
@@ -512,7 +513,10 @@ export default function ClientDashboard({
         {currentTab === 'actives' && (
           view === 'map' ? (
             <div className="animate-in fade-in zoom-in-95 duration-500 bg-white p-4 rounded-[48px] shadow-2xl border border-slate-100 w-full">
-              <Map properties={filteredActiveProperties} />
+              <Map 
+                properties={filteredActiveProperties} 
+                selectedPropertyId={selectedPropertyId}
+              />
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 pb-24">
@@ -648,9 +652,26 @@ export default function ClientDashboard({
                          <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-0.5">Anunciante</span>
                          <span className="text-xs sm:text-sm font-black text-slate-800 truncate w-full tracking-tight">{piso.advertiser || 'Particular'}</span>
                        </div>
-                       <a href={piso.url} target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto text-center bg-blue-700 hover:bg-blue-800 text-white font-black px-5 py-3.5 sm:px-6 sm:py-4 rounded-2xl text-[10px] sm:text-[11px] tracking-[0.1em] sm:tracking-[0.2em] transition-all duration-300 flex items-center justify-center gap-2 sm:gap-3 shadow-lg shadow-blue-700/30 active:scale-95 hover:shadow-blue-700/50 flex-shrink-0">
-                         VER EN PORTAL <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover/footer:translate-x-1 transition-transform" />
-                       </a>
+                       <div className="flex flex-wrap sm:flex-nowrap gap-2 w-full sm:w-auto">
+                         <button 
+                           onClick={() => {
+                             setSelectedPropertyId(piso.id)
+                             setView('map')
+                             window.scrollTo({ top: 0, behavior: 'smooth' })
+                           }}
+                           className="flex-1 sm:flex-none text-center bg-white hover:bg-slate-50 text-blue-700 border-2 border-blue-600 font-black px-4 py-3 sm:px-5 sm:py-4 rounded-2xl text-[10px] sm:text-[11px] tracking-[0.1em] transition-all duration-300 flex items-center justify-center gap-2 active:scale-95 flex-shrink-0"
+                         >
+                           <MapPin className="w-3.5 h-3.5" /> VER MAPA
+                         </button>
+                         <a 
+                           href={piso.url} 
+                           target="_blank" 
+                           rel="noopener noreferrer" 
+                           className="flex-1 sm:flex-none text-center bg-blue-700 hover:bg-blue-800 text-white font-black px-4 py-3.5 sm:px-5 sm:py-4 rounded-2xl text-[10px] sm:text-[11px] tracking-[0.1em] transition-all duration-300 flex items-center justify-center gap-2 active:scale-95 shadow-md shadow-blue-700/20 flex-shrink-0"
+                         >
+                           PORTAL <ArrowRight className="w-3.5 h-3.5 group-hover/footer:translate-x-1 transition-transform" />
+                         </a>
+                       </div>
                     </div>
                   </div>
                 )

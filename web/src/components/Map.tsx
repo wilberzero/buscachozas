@@ -1,7 +1,7 @@
 'use client'
 
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import L from 'leaflet'
 import { BedDouble, Scaling, User, ExternalLink, Euro, MapPin } from 'lucide-react'
 
@@ -65,7 +65,94 @@ async function geocodeAddress(address: string, id: string): Promise<[number, num
   return null
 }
 
-export default function Map({ properties }: { properties: any[] }) {
+// Componente Wrapper para cada marcador que escucha selectedPropertyId
+function PropertyMarker({ 
+  piso, 
+  pos, 
+  icon, 
+  selectedPropertyId 
+}: { 
+  piso: any; 
+  pos: [number, number]; 
+  icon: L.DivIcon; 
+  selectedPropertyId: string | null 
+}) {
+  const markerRef = useRef<L.Marker>(null)
+  const map = useMap()
+  
+  useEffect(() => {
+    if (piso.id === selectedPropertyId && markerRef.current) {
+      // Volar al marcador y abrir el popup con retraso para que termine la animación
+      map.setView(pos, 16, { animate: true })
+      const timer = setTimeout(() => {
+        if (markerRef.current) {
+          markerRef.current.openPopup()
+        }
+      }, 500)
+      return () => clearTimeout(timer)
+    }
+  }, [selectedPropertyId, piso.id, pos, map])
+
+  const sortedHistory = [...(piso.price_history || [])].sort((a: any, b: any) => 
+    new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime()
+  )
+  const precioActual = sortedHistory[0]?.price || 0
+
+  return (
+    <Marker ref={markerRef} position={pos} icon={icon}>
+      <Popup className="custom-popup-wide">
+        <div className="p-3 w-64">
+          <div className="flex justify-between items-start mb-2">
+            <span className="bg-slate-900 text-white text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter">{piso.type || 'Inmueble'}</span>
+            <span className="text-blue-600 font-black text-sm flex items-center gap-0.5"><Euro className="w-3 h-3" />{precioActual.toLocaleString('es-ES')}</span>
+          </div>
+          
+          <h4 className="font-bold text-slate-800 text-sm mb-3 leading-tight line-clamp-2">{piso.title}</h4>
+          
+          <div className="grid grid-cols-2 gap-2 mb-3 border-y border-slate-100 py-2">
+            <div className="flex items-center gap-1.5 text-slate-500">
+              <BedDouble className="w-3.5 h-3.5" />
+              <span className="text-xs font-bold text-slate-700">{piso.rooms} hab</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-slate-500">
+              <Scaling className="w-3.5 h-3.5" />
+              <span className="text-xs font-bold text-slate-700">{piso.size_m2} m²</span>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1 mb-4 text-[10px] font-bold text-slate-500">
+            <div className="flex items-center gap-2">
+              <MapPin className="w-3 h-3 text-blue-400" />
+              <span className="truncate">{piso.address} {piso.neighborhood ? `(${piso.neighborhood})` : ''}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <User className="w-3 h-3 text-slate-400" />
+              <span className="truncate">{piso.advertiser}</span>
+            </div>
+          </div>
+
+          <a 
+            href={piso.url} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 w-full bg-blue-600 !text-white font-black py-2.5 rounded-xl text-xs hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
+            style={{ color: 'white' }}
+          >
+            ABRIR ANUNCIO <ExternalLink className="w-3 h-3" />
+          </a>
+        </div>
+      </Popup>
+    </Marker>
+  )
+}
+
+export default function Map({ 
+  properties, 
+  selectedPropertyId = null 
+}: { 
+  properties: any[]; 
+  selectedPropertyId?: string | null;
+}) {
   const [isMounted, setIsMounted] = useState(false)
   const [coordsMap, setCoordsMap] = useState<Record<string, [number, number]>>({})
 
@@ -180,56 +267,15 @@ export default function Map({ properties }: { properties: any[] }) {
           const pos: [number, number] = isGeocoded 
             ? [coordsMap[piso.id][0] + (randomFunc() - 0.5) * offset, coordsMap[piso.id][1] + (randomFunc() - 0.5) * offset]
             : [fallbackPos[0] + (randomFunc() - 0.5) * offset, fallbackPos[1] + (randomFunc() - 0.5) * offset]
-          
-          const sortedHistory = [...(piso.price_history || [])].sort((a: any, b: any) => 
-            new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime()
-          )
-          const precioActual = sortedHistory[0]?.price || 0
 
           return (
-            <Marker key={piso.id} position={pos} icon={createPriceIcon(precioActual)}>
-              <Popup className="custom-popup-wide">
-                <div className="p-3 w-64">
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="bg-slate-900 text-white text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter">{piso.type || 'Inmueble'}</span>
-                    <span className="text-blue-600 font-black text-sm flex items-center gap-0.5"><Euro className="w-3 h-3" />{precioActual.toLocaleString('es-ES')}</span>
-                  </div>
-                  
-                  <h4 className="font-bold text-slate-800 text-sm mb-3 leading-tight line-clamp-2">{piso.title}</h4>
-                  
-                  <div className="grid grid-cols-2 gap-2 mb-3 border-y border-slate-100 py-2">
-                    <div className="flex items-center gap-1.5 text-slate-500">
-                      <BedDouble className="w-3.5 h-3.5" />
-                      <span className="text-xs font-bold text-slate-700">{piso.rooms} hab</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 text-slate-500">
-                      <Scaling className="w-3.5 h-3.5" />
-                      <span className="text-xs font-bold text-slate-700">{piso.size_m2} m²</span>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col gap-1 mb-4 text-[10px] font-bold text-slate-500">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="w-3 h-3 text-blue-400" />
-                      <span className="truncate">{piso.address} {piso.neighborhood ? `(${piso.neighborhood})` : ''}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <User className="w-3 h-3 text-slate-400" />
-                      <span className="truncate">{piso.advertiser}</span>
-                    </div>
-                  </div>
-
-                  <a 
-                    href={piso.url} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 w-full bg-blue-600 text-white font-black py-2.5 rounded-xl text-xs hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
-                  >
-                    ABRIR ANUNCIO <ExternalLink className="w-3 h-3" />
-                  </a>
-                </div>
-              </Popup>
-            </Marker>
+            <PropertyMarker 
+              key={piso.id} 
+              piso={piso} 
+              pos={pos} 
+              icon={createPriceIcon(0)} // createPriceIcon se llama dentro de PropertyMarker ahora con el precio correcto
+              selectedPropertyId={selectedPropertyId}
+            />
           )
         })}
       </MapContainer>
