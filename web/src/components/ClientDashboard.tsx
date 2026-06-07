@@ -319,7 +319,7 @@ export default function ClientDashboard({
             </div>
             <div className="flex items-baseline gap-2">
               <h1 className="text-2xl font-black text-slate-800 tracking-tight">BuscaChozas</h1>
-              <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md tracking-widest">v1.3.4</span>
+              <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md tracking-widest">v1.3.5</span>
             </div>
           </div>
           
@@ -802,9 +802,9 @@ export default function ClientDashboard({
                       
                       <div className="px-6 py-5 sm:px-8 sm:py-6 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                          <div className="flex flex-col flex-1 min-w-0 w-full">
-                           <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-0.5">Visto por última vez</span>
+                           <span className="text-[9px] font-black text-rose-600 uppercase tracking-widest mb-0.5">Fecha de Baja / Confirmación de Eliminación</span>
                            <span className="text-xs font-black text-slate-600 truncate tracking-tight">
-                             {piso.last_seen_at ? formatDistanceToNow(new Date(piso.last_seen_at), { addSuffix: true, locale: es }) : 'Desconocido'}
+                             {piso.last_seen_at ? `${formatDistanceToNow(new Date(piso.last_seen_at), { addSuffix: true, locale: es })} (${format(new Date(piso.last_seen_at), "dd/MM/yyyy HH:mm")})` : 'Desconocida'}
                            </span>
                          </div>
                       </div>
@@ -870,63 +870,7 @@ export default function ClientDashboard({
 
                 </div>
 
-                {/* 2. GRÁFICOS INTERACTIVOS */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                  
-                  {/* Gráfico 1: Viviendas Activas por Barrio */}
-                  <div className="bg-white p-6 sm:p-8 rounded-[40px] shadow-2xl border border-slate-100 flex flex-col space-y-6">
-                    <div>
-                      <h3 className="text-base sm:text-lg font-black text-slate-800 tracking-tight">Viviendas Activas por Barrio</h3>
-                      <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1">Volumen de oferta actual en Burgos</p>
-                    </div>
-                    <div className="h-80 w-full">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={marketStats.neighborhoodChartData} margin={{ top: 20, right: 10, left: -20, bottom: 20 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                          <XAxis dataKey="name" stroke="#94a3b8" fontSize={9} fontWeight="bold" tickLine={false} />
-                          <YAxis stroke="#94a3b8" fontSize={9} fontWeight="bold" tickLine={false} />
-                          <Tooltip 
-                            contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '16px', color: '#fff', fontSize: '11px', fontWeight: 'bold' }} 
-                            cursor={{ fill: '#f8fafc' }}
-                          />
-                          <Bar dataKey="cantidad" fill="#3b82f6" radius={[8, 8, 0, 0]}>
-                            {marketStats.neighborhoodChartData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={index === 0 ? '#1d4ed8' : '#3b82f6'} />
-                            ))}
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
 
-                  {/* Gráfico 2: Precio/m² por Barrio */}
-                  <div className="bg-white p-6 sm:p-8 rounded-[40px] shadow-2xl border border-slate-100 flex flex-col space-y-6">
-                    <div>
-                      <h3 className="text-base sm:text-lg font-black text-slate-800 tracking-tight">Precio del Metro Cuadrado por Barrio</h3>
-                      <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1">Comparativa de valor del suelo (€/m²)</p>
-                    </div>
-                    <div className="h-80 w-full">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={marketStats.neighborhoodChartData} margin={{ top: 20, right: 10, left: -20, bottom: 20 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                          <XAxis dataKey="name" stroke="#94a3b8" fontSize={9} fontWeight="bold" tickLine={false} tickFormatter={(v) => v.slice(0, 12)} />
-                          <YAxis stroke="#94a3b8" fontSize={9} fontWeight="bold" tickLine={false} unit="€" />
-                          <Tooltip 
-                            contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '16px', color: '#fff', fontSize: '11px', fontWeight: 'bold' }}
-                            formatter={(v) => [v !== undefined ? `${Number(v).toLocaleString('es-ES')} €/m²` : '', 'Precio m²']}
-                            cursor={{ fill: '#f8fafc' }}
-                          />
-                          <Bar dataKey="precioM2" fill="#10b981" radius={[8, 8, 0, 0]}>
-                            {marketStats.neighborhoodChartData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={index === 0 ? '#047857' : '#10b981'} />
-                            ))}
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-
-                </div>
 
                 {/* 2.5. GRÁFICOS DE EVOLUCIÓN HISTÓRICA */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">

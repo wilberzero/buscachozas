@@ -275,7 +275,10 @@ class IdealistaScraperSupabase:
                     res = self.session.get(p['url'], headers=self.headers, impersonate="safari15_5")
                     # Si da 404 o redirige a la home o sale "anuncio finalizado"
                     if res.status_code == 404 or "aviso_finalizado" in res.text or "ya no está publicado" in res.text:
-                        self.supabase.table('properties').update({"active": False}).eq('id', p['id']).execute()
+                        self.supabase.table('properties').update({
+                            "active": False,
+                            "last_seen_at": datetime.utcnow().isoformat() + "Z"
+                        }).eq('id', p['id']).execute()
                         self.deleted_ads.append({
                             "title": p['title'],
                             "url": p['url'],
@@ -300,7 +303,7 @@ class IdealistaScraperSupabase:
         cuerpo = "<h2>Resumen diario de BuscaChozas</h2>"
         
         if self.new_ads:
-            cuerpo += "<h3>🚀 Nuevas Chozas Detectadas</h3><ul>"
+            cuerpo += f"<h3>🚀 Nuevas Chozas Detectadas ({len(self.new_ads)})</h3><ul>"
             for a in self.new_ads:
                 cuerpo += f"<li><b>{a['price']}€</b> - <a href='{a['url']}'>{a['title']}</a></li>"
             cuerpo += "</ul>"
@@ -308,22 +311,27 @@ class IdealistaScraperSupabase:
         if self.price_changes:
             cuerpo += "<h3>💰 Cambios de Precio</h3><ul>"
             for c in self.price_changes:
-                fav_tag = "<b style='color:red'>[⭐ FAVORITO]</b> " if c['is_fav'] else ""
-                emoji = "📉" if c['new'] < c['old'] else "📈"
-                cuerpo += f"<li>{fav_tag}{emoji} {c['old']}€ -> <b>{c['new']}€</b> - <a href='{c['url']}'>{c['title']}</a></li>"
+                if c['is_fav']:
+                    emoji = "📉" if c['new'] < c['old'] else "📈"
+                    cuerpo += f"<li style='background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 6px 10px; margin-bottom: 4px; list-style-type: none;'><b style='color:#d97706'>[⭐ FAVORITO]</b> {emoji} {c['old']}€ -> <b>{c['new']}€</b> - <a href='{c['url']}'>{c['title']}</a></li>"
+                else:
+                    emoji = "📉" if c['new'] < c['old'] else "📈"
+                    cuerpo += f"<li>{emoji} {c['old']}€ -> <b>{c['new']}€</b> - <a href='{c['url']}'>{c['title']}</a></li>"
             cuerpo += "</ul>"
 
         if self.deleted_ads:
-            cuerpo += "<h3>🗑️ Anuncios Eliminados</h3><ul>"
+            cuerpo += f"<h3>🗑️ Anuncios Eliminados ({len(self.deleted_ads)})</h3><ul>"
             for d in self.deleted_ads:
-                fav_tag = "<b style='color:red'>[⭐ FAVORITO]</b> " if d['is_fav'] else ""
-                cuerpo += f"<li>{fav_tag}{d['title']}</li>"
+                if d['is_fav']:
+                    cuerpo += f"<li style='background-color: #fee2e2; border-left: 4px solid #ef4444; padding: 6px 10px; margin-bottom: 4px; list-style-type: none;'><b style='color:#dc2626'>[⚠️ FAVORITO ELIMINADO]</b> <a href='{d['url']}'>{d['title']}</a></li>"
+                else:
+                    cuerpo += f"<li><a href='{d['url']}'>{d['title']}</a></li>"
             cuerpo += "</ul>"
 
         # Aquí intentamos enviar por SMTP si están los datos, si no, lo dejamos en el log
         try:
             msg = MIMEMultipart()
-            msg['Subject'] = f"BuscaChozas: {len(self.new_ads)} nuevas, {len(self.price_changes)} cambios"
+            msg['Subject'] = f"BuscaChozas: {len(self.new_ads)} nuevas, {len(self.price_changes)} cambios, {len(self.deleted_ads)} bajas"
             msg['From'] = "BuscaChozas Bot <notificaciones@buscachozas.com>"
             msg['To'] = email_destino
             msg.attach(MIMEText(cuerpo, 'html'))
