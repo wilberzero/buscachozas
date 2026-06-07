@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase-db'
+import { createClient } from '@/lib/supabase/server'
 
 export async function POST(request: Request) {
   try {
@@ -8,11 +8,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing parameters' }, { status: 400 })
     }
 
+    const supabase = await createClient()
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+
+    if (userError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     if (action === 'delete') {
       const { error } = await supabase
         .from('favorites')
         .delete()
         .eq('property_id', propertyId)
+        .eq('user_id', user.id)
       
       if (error) throw error
     } else {
@@ -20,7 +28,7 @@ export async function POST(request: Request) {
         .from('favorites')
         .insert({ 
           property_id: propertyId,
-          user_id: '5b310e9c-efc4-4cf5-a084-246ec52849da' // Soluciona el constraint not-null de user_id
+          user_id: user.id
         })
       
       if (error) throw error

@@ -1,18 +1,25 @@
-import { supabase } from '@/lib/supabase-db'
+import { createClient } from '@/lib/supabase/server'
 import ClientDashboard from '@/components/ClientDashboard'
 
 export const revalidate = 0 
 
 export default async function Home() {
+  const supabase = await createClient()
+
+  // Traemos el usuario logueado para filtrar sus favoritos
+  const { data: { user } } = await supabase.auth.getUser()
+
   // Traemos todo en paralelo: pisos (activos e inactivos), tus favoritos y tu configuración
   const [propsRes, favsRes, configRes] = await Promise.all([
     supabase
       .from('properties')
       .select('*, price_history(price, recorded_at)')
       .order('created_at', { ascending: false }),
-    supabase
+    user ? supabase
       .from('favorites')
-      .select('property_id'),
+      .select('property_id')
+      .eq('user_id', user.id)
+      : Promise.resolve({ data: [], error: null }),
     supabase
       .from('config')
       .select('*')
