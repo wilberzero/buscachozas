@@ -53,14 +53,23 @@ export default function ClientDashboard({
   // Efecto para restaurar el scroll del anuncio seleccionado al regresar del mapa a la lista
   useEffect(() => {
     if (view === 'list' && selectedPropertyId) {
-      const timer = setTimeout(() => {
+      let attempts = 0
+      const maxAttempts = 10
+      
+      const tryScroll = () => {
         const element = document.getElementById(`property-card-${selectedPropertyId}`)
         if (element) {
           element.scrollIntoView({ behavior: 'smooth', block: 'start' })
-          // Limpiar la selección después de realizar el scroll para evitar activaciones no deseadas
+          setSelectedPropertyId(null)
+        } else if (attempts < maxAttempts) {
+          attempts++
+          setTimeout(tryScroll, 100)
+        } else {
           setSelectedPropertyId(null)
         }
-      }, 150)
+      }
+      
+      const timer = setTimeout(tryScroll, 100)
       return () => clearTimeout(timer)
     }
   }, [view, selectedPropertyId])
@@ -334,7 +343,7 @@ export default function ClientDashboard({
             </div>
             <div className="flex items-baseline gap-2">
               <h1 className="text-2xl font-black text-slate-800 tracking-tight">BuscaChozas</h1>
-              <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md tracking-widest">v1.3.6</span>
+              <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md tracking-widest">v1.3.7</span>
             </div>
           </div>
           
@@ -558,7 +567,7 @@ export default function ClientDashboard({
                 const isExpanded = expandedPrices.includes(piso.id)
 
                 return (
-                  <div key={piso.id} id={`property-card-${piso.id}`} className="bg-white rounded-3xl sm:rounded-[40px] shadow-xl shadow-slate-200/50 border border-slate-200 overflow-hidden flex flex-col relative group sm:hover:-translate-y-2 transition-all duration-300 ease-out">
+                  <div key={piso.id} id={`property-card-${piso.id}`} className="bg-white rounded-3xl sm:rounded-[40px] shadow-xl shadow-slate-200/50 border border-slate-200 overflow-hidden flex flex-col relative group sm:hover:-translate-y-2 transition-all duration-300 ease-out scroll-mt-56 sm:scroll-mt-28">
                     <button onClick={() => toggleFavorite(piso.id)} className="absolute top-4 right-4 sm:top-6 sm:right-6 z-10 p-3 sm:p-4 bg-white/95 backdrop-blur-xl rounded-2xl shadow-lg border border-slate-100 hover:scale-110 active:scale-90 transition-all">
                       <Heart className={`w-5 h-5 sm:w-6 sm:h-6 ${isFav ? 'fill-rose-600 text-rose-600' : 'text-slate-300 group-hover:text-rose-400'}`} />
                     </button>
