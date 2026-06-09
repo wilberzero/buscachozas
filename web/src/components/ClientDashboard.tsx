@@ -29,8 +29,14 @@ export default function ClientDashboard({
   const [showSettings, setShowSettings] = useState(false)
   const [statsSortBy, setStatsSortBy] = useState<'total-diff-desc' | 'total-diff-asc' | 'last-diff-desc' | 'last-diff-asc' | 'price-asc' | 'price-desc'>('total-diff-desc')
   const [expandedStatsPrices, setExpandedStatsPrices] = useState<string[]>([])
-  const [listSortBy, setListSortBy] = useState<'created-desc' | 'price-asc' | 'price-desc' | 'rooms-asc' | 'rooms-desc' | 'size-asc' | 'size-desc'>('created-desc')
+  const [listSortBy, setListSortBy] = useState<'created-desc' | 'price-asc' | 'price-desc' | 'price-m2-asc' | 'price-m2-desc' | 'rooms-asc' | 'rooms-desc' | 'size-asc' | 'size-desc'>('created-desc')
   
+  const maxCreatedAtTime = useMemo(() => {
+    const activeProps = properties.filter(p => p.active)
+    const times = activeProps.map(p => new Date(p.created_at).getTime())
+    return times.length > 0 ? Math.max(...times) : 0
+  }, [properties])
+
   // Ajustes de Usuario
   const [config, setConfig] = useState(() => {
     const cfg = { ...initialConfig }
@@ -195,6 +201,10 @@ export default function ClientDashboard({
       results.sort((a, b) => a.currentPrice - b.currentPrice)
     } else if (listSortBy === 'price-desc') {
       results.sort((a, b) => b.currentPrice - a.currentPrice)
+    } else if (listSortBy === 'price-m2-asc') {
+      results.sort((a, b) => (a.pricePerM2 || 0) - (b.pricePerM2 || 0))
+    } else if (listSortBy === 'price-m2-desc') {
+      results.sort((a, b) => (b.pricePerM2 || 0) - (a.pricePerM2 || 0))
     } else if (listSortBy === 'rooms-asc') {
       results.sort((a, b) => (a.rooms || 0) - (b.rooms || 0))
     } else if (listSortBy === 'rooms-desc') {
@@ -318,6 +328,24 @@ export default function ClientDashboard({
     })).sort((a, b) => a.rawDate.localeCompare(b.rawDate))
   }, [allPropertiesParsed])
 
+  // Datos para el gráfico de Bajas por Fecha
+  const bajasChartData = useMemo(() => {
+    const dateMap: Record<string, number> = {}
+    
+    inactiveProperties.forEach(p => {
+      if (p.last_seen_at) {
+        const dateKey = format(new Date(p.last_seen_at), 'yyyy-MM-dd')
+        dateMap[dateKey] = (dateMap[dateKey] || 0) + 1
+      }
+    })
+
+    return Object.entries(dateMap).map(([date, count]) => ({
+      fecha: format(new Date(date), 'dd MMM', { locale: es }),
+      rawDate: date,
+      cantidad: count
+    })).sort((a, b) => a.rawDate.localeCompare(b.rawDate))
+  }, [inactiveProperties])
+
   return (
     <div className="flex flex-col min-h-screen bg-slate-50 font-sans text-slate-900 overflow-x-hidden">
       
@@ -343,7 +371,7 @@ export default function ClientDashboard({
             </div>
             <div className="flex items-baseline gap-2">
               <h1 className="text-2xl font-black text-slate-800 tracking-tight">BuscaChozas</h1>
-              <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md tracking-widest">v1.3.7</span>
+              <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md tracking-widest">v1.3.8</span>
             </div>
           </div>
           
@@ -515,6 +543,8 @@ export default function ClientDashboard({
                   <option value="created-desc">Más Recientes</option>
                   <option value="price-asc">Precio: Menor a Mayor</option>
                   <option value="price-desc">Precio: Mayor a Menor</option>
+                  <option value="price-m2-asc">Precio m²: Menor a Mayor</option>
+                  <option value="price-m2-desc">Precio m²: Mayor a Menor</option>
                   <option value="rooms-asc">Habitaciones: Menor a Mayor</option>
                   <option value="rooms-desc">Habitaciones: Mayor a Menor</option>
                   <option value="size-asc">Superficie: Menor a Mayor</option>
@@ -565,6 +595,8 @@ export default function ClientDashboard({
               {filteredActiveProperties.map((piso) => {
                 const isFav = favorites.includes(piso.id)
                 const isExpanded = expandedPrices.includes(piso.id)
+                const createdTime = new Date(piso.created_at).getTime()
+                const isNew = maxCreatedAtTime > 0 && createdTime >= maxCreatedAtTime - 12 * 60 * 60 * 1000
 
                 return (
                   <div key={piso.id} id={`property-card-${piso.id}`} className="bg-white rounded-3xl sm:rounded-[40px] shadow-xl shadow-slate-200/50 border border-slate-200 overflow-hidden flex flex-col relative group sm:hover:-translate-y-2 transition-all duration-300 ease-out scroll-mt-56 sm:scroll-mt-28">
@@ -573,20 +605,41 @@ export default function ClientDashboard({
                     </button>
 
                     {/* Badges de Estado (Esquina Superior Izquierda) */}
-                    <div className="absolute top-4 left-4 sm:top-6 sm:left-6 z-10 flex flex-col gap-2 pointer-events-none">
+                    <div className="absolute top-4 left-4 sm:top-6 sm:left-6 z-10 flex flex-col gap-1.5 pointer-events-none">
+                      {isNew && (
+                        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-2.5 py-1.5 rounded-xl text-[8px] sm:text-[9px] font-black tracking-widest shadow-md flex items-center gap-1 w-fit border border-blue-500/20">
+                          ✨ NUEVO
+                        </div>
+                      )}
+                      
                       {piso.priceDiff !== 0 && (
-                        <div className={`px-3 py-1.5 rounded-xl text-[8px] sm:text-[9px] font-black tracking-widest shadow-md flex items-center gap-1 w-fit ${piso.priceDiff < 0 ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
-                          {piso.priceDiff < 0 ? <TrendingDown className="w-3 h-3" /> : <TrendingUp className="w-3 h-3" />}
+                        <div className={`px-2.5 py-1 rounded-lg text-[8px] font-black tracking-widest shadow-md flex items-center gap-1 w-fit ${piso.priceDiff < 0 ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
+                          {piso.priceDiff < 0 ? <TrendingDown className="w-2.5 h-2.5" /> : <TrendingUp className="w-2.5 h-2.5" />}
                           {piso.priceDiff < 0 ? 'REBAJADO' : 'SUBIDO'} {Math.abs(piso.priceDiff).toLocaleString('es-ES')}€
                         </div>
                       )}
+                      
                       <div className="bg-slate-900/75 backdrop-blur-md text-white px-2.5 py-1 rounded-lg text-[8px] font-black tracking-widest shadow-sm flex items-center gap-1 w-fit border border-slate-700/50">
                         <Calendar className="w-2.5 h-2.5 text-blue-400" />
-                        REVISADO {piso.last_seen_at ? formatDistanceToNow(new Date(piso.last_seen_at), { addSuffix: true, locale: es }).toUpperCase() : 'HOY'}
+                        Añadido {piso.created_at ? format(new Date(piso.created_at), "dd/MM/yyyy") : 'Hoy'}
+                      </div>
+                      
+                      <div className="bg-slate-850/70 backdrop-blur-md text-slate-300 px-2 py-0.5 rounded-md text-[6.5px] font-bold tracking-wider shadow-sm flex items-center gap-1 w-fit border border-slate-700/20">
+                        {piso.sortedHist.length > 1 ? (
+                          <>
+                            <TrendingDown className="w-2 h-2 text-emerald-400" />
+                            Precio actualizado {formatDistanceToNow(new Date(piso.sortedHist[piso.sortedHist.length - 1].recorded_at), { addSuffix: true, locale: es })}
+                          </>
+                        ) : (
+                          <>
+                            <Calendar className="w-2 h-2 text-slate-400" />
+                            Revisado {piso.last_seen_at ? formatDistanceToNow(new Date(piso.last_seen_at), { addSuffix: true, locale: es }) : 'hoy'}
+                          </>
+                        )}
                       </div>
                     </div>
 
-                    <div className="p-6 sm:p-8 pt-16 sm:pt-20 flex-grow space-y-6">
+                    <div className="p-6 sm:p-8 pt-32 sm:pt-36 flex-grow space-y-6">
                       <div className="space-y-2">
                         <span className="inline-block text-[9px] font-black tracking-widest text-blue-600 bg-blue-50 px-3 py-1 rounded-full uppercase">
                           {piso.type || 'Piso'}
@@ -940,6 +993,38 @@ export default function ClientDashboard({
                           <Line type="monotone" dataKey="precioM2Medio" stroke="#10b981" strokeWidth={4} activeDot={{ r: 8 }} dot={{ r: 4 }} />
                         </LineChart>
                       </ResponsiveContainer>
+                    </div>
+                  </div>
+
+                  {/* Viviendas dadas de baja por fecha */}
+                  <div className="bg-white p-6 sm:p-8 rounded-[40px] shadow-2xl border border-slate-100 flex flex-col space-y-6 lg:col-span-2">
+                    <div>
+                      <h3 className="text-base sm:text-lg font-black text-slate-800 tracking-tight">Viviendas Dadas de Baja por Fecha</h3>
+                      <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1">Cantidad de inmuebles retirados del mercado por día</p>
+                    </div>
+                    <div className="h-80 w-full">
+                      {bajasChartData.length === 0 ? (
+                        <div className="h-full flex items-center justify-center border border-dashed border-slate-100 rounded-3xl bg-slate-50/50">
+                          <p className="text-slate-400 text-xs font-bold uppercase tracking-widest italic">Aún no hay bajas confirmadas en el registro</p>
+                        </div>
+                      ) : (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={bajasChartData} margin={{ top: 20, right: 20, left: -10, bottom: 20 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                            <XAxis dataKey="fecha" stroke="#94a3b8" fontSize={9} fontWeight="bold" tickLine={false} />
+                            <YAxis stroke="#94a3b8" fontSize={9} fontWeight="bold" tickLine={false} allowDecimals={false} />
+                            <Tooltip 
+                              contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '16px', color: '#fff', fontSize: '11px', fontWeight: 'bold' }}
+                              formatter={(v) => [v !== undefined ? `${v} viviendas` : '', 'Bajas']}
+                            />
+                            <Bar dataKey="cantidad" fill="#f43f5e" radius={[10, 10, 0, 0]}>
+                              {bajasChartData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill="#f43f5e" />
+                              ))}
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
+                      )}
                     </div>
                   </div>
 

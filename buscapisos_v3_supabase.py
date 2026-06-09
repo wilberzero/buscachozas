@@ -91,6 +91,20 @@ class IdealistaScraperSupabase:
         except Exception as e:
             print(f"[!] Error guardando real_locations.json: {e}")
 
+    def _format_tiempo(self, fecha_inicio, fecha_fin):
+        anos = fecha_fin.year - fecha_inicio.year
+        meses = fecha_fin.month - fecha_inicio.month
+        if meses < 0:
+            anos -= 1
+            meses += 12
+        
+        parts = []
+        if anos > 0:
+            parts.append(f"{anos} {'año' if anos == 1 else 'años'}")
+        if meses > 0 or not parts:
+            parts.append(f"{meses} {'mes' if meses == 1 else 'meses'}")
+        return " y ".join(parts)
+
     def _cargar_configuracion(self):
         try:
             res = self.supabase.table('config').select('*').eq('id', 1).execute()
@@ -183,12 +197,21 @@ class IdealistaScraperSupabase:
                     if hist.data and int(hist.data[0]['price']) != precio_num:
                         old_price = int(hist.data[0]['price'])
                         self.supabase.table('price_history').insert({"property_id": db_id, "price": precio_num}).execute()
+                        
+                        initial_price_res = self.supabase.table('price_history').select('price').eq('property_id', db_id).order('recorded_at', desc=False).limit(1).execute()
+                        initial_price = initial_price_res.data[0]['price'] if initial_price_res.data else old_price
+                        
+                        created_dt = datetime.fromisoformat(prop['created_at'].replace('Z', '+00:00'))
+                        created_formatted = created_dt.strftime("%d/%m/%Y")
+                        
                         self.price_changes.append({
                             "title": prop['title'],
                             "old": old_price,
                             "new": precio_num,
                             "url": prop['url'],
-                            "is_fav": db_id in self.favorites_ids
+                            "is_fav": db_id in self.favorites_ids,
+                            "created_at": created_formatted,
+                            "initial_price": initial_price
                         })
 
                     # ¿Tiene coordenadas reales guardadas? Si no, intentar obtenerlas
@@ -266,7 +289,7 @@ class IdealistaScraperSupabase:
     def _verificar_bajas(self):
         print("[*] Verificando anuncios eliminados...")
         # Buscamos en la BD los que estaban activos pero no se han visto en esta pasada
-        activas_db = self.supabase.table('properties').select('id, external_id, url, title').eq('active', True).execute()
+        activas_db = self.supabase.table('properties').select('id, external_id, url, title, created_at').eq('active', True).execute()
         for p in activas_db.data:
             if p['external_id'] not in self.seen_in_this_run:
                 # Visitamos la URL para confirmar
@@ -275,14 +298,34 @@ class IdealistaScraperSupabase:
                     res = self.session.get(p['url'], headers=self.headers, impersonate="safari15_5")
                     # Si da 404 o redirige a la home o sale "anuncio finalizado"
                     if res.status_code == 404 or "aviso_finalizado" in res.text or "ya no está publicado" in res.text:
+                        price_res = self.supabase.table('price_history').select('price').eq('property_id', p['id']).order('recorded_at', desc=False).execute()
+                        orig_price = 0
+                        final_price = 0
+                        price_diff = 0
+                        if price_res.data:
+                            orig_price = price_res.data[0]['price']
+                            final_price = price_res.data[-1]['price']
+                            price_diff = final_price - orig_price
+                        
+                        created_dt = datetime.fromisoformat(p['created_at'].replace('Z', '+00:00'))
+                        now_dt = datetime.utcnow().replace(tzinfo=created_dt.tzinfo)
+                        tiempo_mercado = self._format_tiempo(created_dt, now_dt)
+                        created_formatted = created_dt.strftime("%d/%m/%Y")
+
                         self.supabase.table('properties').update({
                             "active": False,
                             "last_seen_at": datetime.utcnow().isoformat() + "Z"
                         }).eq('id', p['id']).execute()
+                        
                         self.deleted_ads.append({
                             "title": p['title'],
                             "url": p['url'],
-                            "is_fav": p['id'] in self.favorites_ids
+                            "is_fav": p['id'] in self.favorites_ids,
+                            "created_at": created_formatted,
+                            "tiempo_mercado": tiempo_mercado,
+                            "orig_price": orig_price,
+                            "final_price": final_price,
+                            "price_diff": price_diff
                         })
                         print(f"[!] Baja confirmada: {p['title']}")
                     else:
@@ -311,22 +354,37 @@ class IdealistaScraperSupabase:
         if self.price_changes:
             cuerpo += "<h3>💰 Cambios de Precio</h3><ul>"
             for c in self.price_changes:
+                emoji = "📉" if c['new'] < c['old'] else "📈"
+                detalle_cambio = f" - Agregado: {c['created_at']} | Precio inicial: {c['initial_price']}€"
+                
                 if c['is_fav']:
-                    emoji = "📉" if c['new'] < c['old'] else "📈"
-                    cuerpo += f"<li style='background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 6px 10px; margin-bottom: 4px; list-style-type: none;'><b style='color:#d97706'>[⭐ FAVORITO]</b> {emoji} {c['old']}€ -> <b>{c['new']}€</b> - <a href='{c['url']}'>{c['title']}</a></li>"
+                    cuerpo += f"<li style='background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 6px 10px; margin-bottom: 4px; list-style-type: none;'><b style='color:#d97706'>[⭐ FAVORITO]</b> {emoji} {c['old']}€ -> <b>{c['new']}€</b> - <a href='{c['url']}'>{c['title']}</a>{detalle_cambio}</li>"
                 else:
-                    emoji = "📉" if c['new'] < c['old'] else "📈"
-                    cuerpo += f"<li>{emoji} {c['old']}€ -> <b>{c['new']}€</b> - <a href='{c['url']}'>{c['title']}</a></li>"
+                    cuerpo += f"<li>{emoji} {c['old']}€ -> <b>{c['new']}€</b> - <a href='{c['url']}'>{c['title']}</a>{detalle_cambio}</li>"
             cuerpo += "</ul>"
 
         if self.deleted_ads:
             cuerpo += f"<h3>🗑️ Anuncios Eliminados ({len(self.deleted_ads)})</h3><ul>"
             for d in self.deleted_ads:
-                if d['is_fav']:
-                    cuerpo += f"<li style='background-color: #fee2e2; border-left: 4px solid #ef4444; padding: 6px 10px; margin-bottom: 4px; list-style-type: none;'><b style='color:#dc2626'>[⚠️ FAVORITO ELIMINADO]</b> <a href='{d['url']}'>{d['title']}</a></li>"
+                diff_val = d['price_diff']
+                diff_str = ""
+                if diff_val < 0:
+                    diff_str = f" (Bajó {abs(diff_val)}€)"
+                elif diff_val > 0:
+                    diff_str = f" (Subió {diff_val}€)"
                 else:
-                    cuerpo += f"<li><a href='{d['url']}'>{d['title']}</a></li>"
+                    diff_str = " (Sin cambios de precio)"
+
+                detalle_baja = f" - Publicado: {d['created_at']} | En mercado: {d['tiempo_mercado']} | Precio original: {d['orig_price']}€ | Precio de baja: {d['final_price']}€{diff_str}"
+                
+                if d['is_fav']:
+                    cuerpo += f"<li style='background-color: #fee2e2; border-left: 4px solid #ef4444; padding: 6px 10px; margin-bottom: 4px; list-style-type: none;'><b style='color:#dc2626'>[⚠️ FAVORITO ELIMINADO]</b> <a href='{d['url']}'>{d['title']}</a>{detalle_baja}</li>"
+                else:
+                    cuerpo += f"<li><a href='{d['url']}'>{d['title']}</a>{detalle_baja}</li>"
             cuerpo += "</ul>"
+
+        # Enlace de la web al final
+        cuerpo += "<hr/><p style='color: #475569; font-size: 12px;'>🌐 Visita la web en: <a href='https://buscachozas.vercel.app'>buscachozas.vercel.app</a></p>"
 
         # Aquí intentamos enviar por SMTP si están los datos, si no, lo dejamos en el log
         try:
