@@ -10,6 +10,26 @@ import { createClient } from '@/lib/supabase/client'
 
 const Map = dynamic(() => import('./Map'), { ssr: false })
 
+function formatTiempoMercado(createdStr: string, lastSeenStr: string) {
+  if (!createdStr || !lastSeenStr) return 'N/D'
+  const inicio = new Date(createdStr)
+  const fin = new Date(lastSeenStr)
+  let anos = fin.getFullYear() - inicio.getFullYear()
+  let meses = fin.getMonth() - inicio.getMonth()
+  if (meses < 0) {
+    anos--
+    meses += 12
+  }
+  const parts = []
+  if (anos > 0) {
+    parts.push(`${anos} ${anos === 1 ? 'año' : 'años'}`)
+  }
+  if (meses > 0 || parts.length === 0) {
+    parts.push(`${meses} ${meses === 1 ? 'mes' : 'meses'}`)
+  }
+  return parts.join(' y ')
+}
+
 export default function ClientDashboard({ 
   properties, 
   initialFavorites = [], 
@@ -599,94 +619,85 @@ export default function ClientDashboard({
                 const isNew = maxCreatedAtTime > 0 && createdTime >= maxCreatedAtTime - 12 * 60 * 60 * 1000
 
                 return (
-                  <div key={piso.id} id={`property-card-${piso.id}`} className="bg-white rounded-3xl sm:rounded-[40px] shadow-xl shadow-slate-200/50 border border-slate-200 overflow-hidden flex flex-col relative group sm:hover:-translate-y-2 transition-all duration-300 ease-out scroll-mt-56 sm:scroll-mt-28">
-                    <button onClick={() => toggleFavorite(piso.id)} className="absolute top-4 right-4 sm:top-6 sm:right-6 z-10 p-3 sm:p-4 bg-white/95 backdrop-blur-xl rounded-2xl shadow-lg border border-slate-100 hover:scale-110 active:scale-90 transition-all">
-                      <Heart className={`w-5 h-5 sm:w-6 sm:h-6 ${isFav ? 'fill-rose-600 text-rose-600' : 'text-slate-300 group-hover:text-rose-400'}`} />
+                  <div key={piso.id} id={`property-card-${piso.id}`} className="bg-white rounded-3xl sm:rounded-[32px] shadow-lg shadow-slate-200/40 border border-slate-200 overflow-hidden flex flex-col relative group sm:hover:-translate-y-1.5 transition-all duration-300 ease-out scroll-mt-56 sm:scroll-mt-28">
+                    <button onClick={() => toggleFavorite(piso.id)} className="absolute top-3 right-3 sm:top-4 sm:right-4 z-10 p-2 sm:p-2.5 bg-white/95 backdrop-blur-xl rounded-xl shadow border border-slate-100 hover:scale-110 active:scale-90 transition-all">
+                      <Heart className={`w-4 h-4 sm:w-4.5 sm:h-4.5 ${isFav ? 'fill-rose-600 text-rose-600' : 'text-slate-300 group-hover:text-rose-400'}`} />
                     </button>
 
                     {/* Badges de Estado (Esquina Superior Izquierda) */}
-                    <div className="absolute top-4 left-4 sm:top-6 sm:left-6 z-10 flex flex-col gap-1.5 pointer-events-none">
-                      {isNew && (
-                        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-2.5 py-1.5 rounded-xl text-[8px] sm:text-[9px] font-black tracking-widest shadow-md flex items-center gap-1 w-fit border border-blue-500/20">
-                          ✨ NUEVO
-                        </div>
-                      )}
-                      
-                      {piso.priceDiff !== 0 && (
-                        <div className={`px-2.5 py-1 rounded-lg text-[8px] font-black tracking-widest shadow-md flex items-center gap-1 w-fit ${piso.priceDiff < 0 ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
-                          {piso.priceDiff < 0 ? <TrendingDown className="w-2.5 h-2.5" /> : <TrendingUp className="w-2.5 h-2.5" />}
-                          {piso.priceDiff < 0 ? 'REBAJADO' : 'SUBIDO'} {Math.abs(piso.priceDiff).toLocaleString('es-ES')}€
-                        </div>
-                      )}
-                      
-                      <div className="bg-slate-900/75 backdrop-blur-md text-white px-2.5 py-1 rounded-lg text-[8px] font-black tracking-widest shadow-sm flex items-center gap-1 w-fit border border-slate-700/50">
-                        <Calendar className="w-2.5 h-2.5 text-blue-400" />
-                        Añadido {piso.created_at ? format(new Date(piso.created_at), "dd/MM/yyyy") : 'Hoy'}
+                    <div className="absolute top-3 left-3 right-3 sm:top-4 sm:left-4 sm:right-4 z-10 flex flex-col gap-1.5 pointer-events-none max-w-[calc(100%-40px)]">
+                      <div className="flex flex-wrap gap-1.5">
+                        {isNew && (
+                          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-2 py-0.5 rounded-md text-[8px] font-black tracking-widest shadow-md flex items-center gap-1 w-fit border border-blue-500/20">
+                            ✨ NUEVO
+                          </div>
+                        )}
+                        
+                        {piso.priceDiff !== 0 && (
+                          <div className={`px-2 py-0.5 rounded-md text-[8px] font-black tracking-widest shadow-md flex items-center gap-1 w-fit ${piso.priceDiff < 0 ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
+                            {piso.priceDiff < 0 ? <TrendingDown className="w-2.5 h-2.5" /> : <TrendingUp className="w-2.5 h-2.5" />}
+                            {piso.priceDiff < 0 ? 'REBAJADO' : 'SUBIDO'} {Math.abs(piso.priceDiff).toLocaleString('es-ES')}€
+                          </div>
+                        )}
                       </div>
                       
-                      <div className="bg-slate-850/70 backdrop-blur-md text-slate-300 px-2 py-0.5 rounded-md text-[6.5px] font-bold tracking-wider shadow-sm flex items-center gap-1 w-fit border border-slate-700/20">
-                        {piso.sortedHist.length > 1 ? (
-                          <>
-                            <TrendingDown className="w-2 h-2 text-emerald-400" />
-                            Precio actualizado {formatDistanceToNow(new Date(piso.sortedHist[piso.sortedHist.length - 1].recorded_at), { addSuffix: true, locale: es })}
-                          </>
-                        ) : (
-                          <>
-                            <Calendar className="w-2 h-2 text-slate-400" />
-                            Revisado {piso.last_seen_at ? formatDistanceToNow(new Date(piso.last_seen_at), { addSuffix: true, locale: es }) : 'hoy'}
-                          </>
-                        )}
+                      <div className="flex flex-wrap gap-1.5">
+                        <div className="bg-slate-900/75 backdrop-blur-md text-white px-2 py-0.5 rounded-md text-[8px] font-black tracking-widest shadow-sm flex items-center gap-1 w-fit border border-slate-700/50">
+                          <Calendar className="w-2.5 h-2.5 text-blue-400" />
+                          Añadido {piso.created_at ? format(new Date(piso.created_at), "dd/MM/yyyy") : 'Hoy'}
+                        </div>
+                        
+                        <div className="bg-slate-800/80 backdrop-blur-md text-slate-200 px-2 py-0.5 rounded-md text-[8px] font-black tracking-widest shadow-sm flex items-center gap-1 w-fit border border-slate-700/20">
+                          <Calendar className="w-2 h-2 text-slate-400" />
+                          Precio revisado {piso.last_seen_at ? formatDistanceToNow(new Date(piso.last_seen_at), { addSuffix: true, locale: es }) : 'hoy'}
+                        </div>
                       </div>
                     </div>
 
-                    <div className="p-6 sm:p-8 pt-32 sm:pt-36 flex-grow space-y-6">
-                      <div className="space-y-2">
-                        <span className="inline-block text-[9px] font-black tracking-widest text-blue-600 bg-blue-50 px-3 py-1 rounded-full uppercase">
+                    <div className="p-4 sm:p-5 pt-20 sm:pt-22 flex-grow space-y-4">
+                      <div className="space-y-1.5">
+                        <span className="inline-block text-[8px] font-black tracking-widest text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-full uppercase">
                           {piso.type || 'Piso'}
                         </span>
-                        <h3 className="text-base sm:text-lg font-black text-slate-800 leading-snug tracking-tight group-hover:text-blue-700 transition-colors">
+                        <h3 className="text-sm sm:text-base font-black text-slate-800 leading-snug tracking-tight group-hover:text-blue-700 transition-colors line-clamp-2">
                           {piso.title}
                         </h3>
                       </div>
 
-                      <div className="flex items-center gap-2 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer">
-                        <MapPin className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                      <div className="flex items-center gap-1.5 text-slate-400 hover:text-slate-655 transition-colors cursor-pointer">
+                        <MapPin className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
                         <span className="text-xs font-bold truncate leading-none">
                           {piso.address} {piso.neighborhood && `(${piso.neighborhood})`}
                         </span>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4 py-4 border-y border-slate-100">
-                        <div className="flex items-center gap-3">
-                          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                            <BedDouble className="w-4 h-4 text-slate-500" />
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider leading-none">Habitaciones</span>
-                            <span className="text-xs font-black text-slate-800 mt-1">{piso.rooms || 'N/D'}</span>
-                          </div>
+                      <div className="flex items-center gap-4 text-slate-600 text-xs font-bold bg-slate-50 px-3 py-2 rounded-xl border border-slate-100/60">
+                        <div className="flex items-center gap-1.5">
+                          <BedDouble className="w-4 h-4 text-slate-400" />
+                          <span>{piso.rooms || 'N/D'} hab.</span>
                         </div>
-
-                        <div className="flex items-center gap-3">
-                          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                            <Scaling className="w-4 h-4 text-slate-500" />
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider leading-none">Superficie</span>
-                            <span className="text-xs font-black text-slate-800 mt-1">{piso.size_m2 ? `${Math.round(piso.size_m2)} m²` : 'N/D'}</span>
-                          </div>
+                        <div className="w-px h-3 bg-slate-200"></div>
+                        <div className="flex items-center gap-1.5">
+                          <Scaling className="w-4 h-4 text-slate-400" />
+                          <span>{piso.size_m2 ? `${Math.round(piso.size_m2)} m²` : 'N/D'}</span>
                         </div>
+                        {piso.floor && (
+                          <>
+                            <div className="w-px h-3 bg-slate-200"></div>
+                            <span className="text-slate-500 text-[10px] uppercase font-bold">{piso.floor}</span>
+                          </>
+                        )}
                       </div>
 
                       {/* AREA DE PRECIO Y DESPLIEGUE DE HISTÓRICO */}
-                      <div className="space-y-4">
+                      <div className="space-y-3">
                         <div 
                           onClick={() => toggleExpandPrice(piso.id)} 
-                          className="flex justify-between items-end bg-slate-50 hover:bg-slate-100/80 p-4 sm:p-5 rounded-3xl border-2 border-slate-100/50 cursor-pointer transition-all active:scale-[0.98]"
+                          className="flex justify-between items-end bg-slate-50 hover:bg-slate-100/80 p-3 sm:p-3.5 rounded-2xl border border-slate-200/60 cursor-pointer transition-all active:scale-[0.98]"
                         >
                           <div className="flex flex-col">
-                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Precio Actual</span>
-                            <span className="text-lg sm:text-2xl font-black text-slate-800 leading-none mt-1.5 flex items-baseline">
+                            <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider">Precio Actual</span>
+                            <span className="text-base sm:text-xl font-black text-slate-800 leading-none mt-1 flex items-baseline">
                               {piso.currentPrice.toLocaleString('es-ES')}€
                               {piso.pricePerM2 > 0 && (
                                 <span className="text-[9px] font-bold text-slate-400 ml-1.5 tracking-normal">
@@ -696,9 +707,9 @@ export default function ClientDashboard({
                             </span>
                           </div>
 
-                          <div className="flex items-center gap-2 text-[10px] font-black text-blue-600 uppercase tracking-widest">
+                          <div className="flex items-center gap-1.5 text-[9px] font-black text-blue-600 uppercase tracking-wider">
                             <span>HISTORIAL</span>
-                            {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                            {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                           </div>
                         </div>
 
@@ -727,29 +738,29 @@ export default function ClientDashboard({
                       </div>
                     </div>
                     
-                    <div className="px-6 py-5 sm:px-8 sm:py-6 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 group/footer">
+                    <div className="px-4 py-3 sm:px-5 sm:py-3.5 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 group/footer">
                        <div className="flex flex-col flex-1 min-w-0 w-full sm:w-auto">
-                         <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-0.5">Anunciante</span>
-                         <span className="text-xs sm:text-sm font-black text-slate-800 truncate w-full tracking-tight">{piso.advertiser || 'Particular'}</span>
+                         <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">Anunciante</span>
+                         <span className="text-xs font-black text-slate-700 truncate w-full tracking-tight mt-1">{piso.advertiser || 'Particular'}</span>
                        </div>
-                       <div className="flex flex-wrap sm:flex-nowrap gap-2 w-full sm:w-auto">
+                       <div className="flex gap-2 w-full sm:w-auto">
                          <button 
                            onClick={() => {
                              setSelectedPropertyId(piso.id)
                              setView('map')
                              window.scrollTo({ top: 0, behavior: 'smooth' })
                            }}
-                           className="flex-1 sm:flex-none text-center bg-white hover:bg-slate-50 text-blue-700 border-2 border-blue-600 font-black px-4 py-3 sm:px-5 sm:py-4 rounded-2xl text-[10px] sm:text-[11px] tracking-[0.1em] transition-all duration-300 flex items-center justify-center gap-2 active:scale-95 flex-shrink-0"
+                           className="flex-1 sm:flex-none text-center bg-white hover:bg-slate-50 text-blue-700 border border-blue-600 font-black px-3 py-2 rounded-xl text-[9px] tracking-wider transition-all flex items-center justify-center gap-1.5 active:scale-95 flex-shrink-0"
                          >
-                           <MapPin className="w-3.5 h-3.5" /> VER MAPA
+                           <MapPin className="w-3.5 h-3.5" /> MAPA
                          </button>
                          <a 
                            href={piso.url} 
                            target="_blank" 
                            rel="noopener noreferrer" 
-                           className="flex-1 sm:flex-none text-center bg-blue-700 hover:bg-blue-800 text-white font-black px-4 py-3.5 sm:px-5 sm:py-4 rounded-2xl text-[10px] sm:text-[11px] tracking-[0.1em] transition-all duration-300 flex items-center justify-center gap-2 active:scale-95 shadow-md shadow-blue-700/20 flex-shrink-0"
+                           className="flex-1 sm:flex-none text-center bg-blue-700 hover:bg-blue-800 text-white font-black px-3.5 py-2.5 rounded-xl text-[9px] tracking-wider transition-all flex items-center justify-center gap-1.5 active:scale-95 shadow-sm shadow-blue-700/10 flex-shrink-0"
                          >
-                           PORTAL <ArrowRight className="w-3.5 h-3.5 group-hover/footer:translate-x-1 transition-transform" />
+                           PORTAL <ArrowRight className="w-3.5 h-3.5 group-hover/footer:translate-x-0.5 transition-transform" />
                          </a>
                        </div>
                     </div>
@@ -782,106 +793,133 @@ export default function ClientDashboard({
               ) : (
                 inactiveProperties.map((piso) => {
                   const isExpanded = expandedPrices.includes(piso.id)
+                  const originalPrice = piso.initialPrice || (piso.sortedHist.length > 0 ? piso.sortedHist[0].price : piso.currentPrice)
+                  const diffVal = piso.currentPrice - originalPrice
+                  const tiempoMercado = formatTiempoMercado(piso.created_at, piso.last_seen_at)
+
                   return (
-                    <div key={piso.id} className="bg-white rounded-3xl sm:rounded-[40px] shadow-xl shadow-slate-200/50 border border-slate-200 overflow-hidden flex flex-col relative opacity-85 group sm:hover:opacity-100 transition-all duration-300">
+                    <div key={piso.id} className="bg-white rounded-3xl sm:rounded-[32px] shadow-lg shadow-slate-200/40 border border-slate-200 overflow-hidden flex flex-col relative opacity-85 group sm:hover:opacity-100 transition-all duration-300">
                       
                       {/* Badge de Baja */}
-                      <div className="absolute top-4 left-4 sm:top-6 sm:left-6 z-10 px-4 py-2 rounded-2xl text-[9px] font-black tracking-widest shadow-md flex items-center gap-1 bg-slate-500 text-white">
-                        <Trash2 className="w-3.5 h-3.5" /> FUERA DE MERCADO
+                      <div className="absolute top-3 left-3 right-3 sm:top-4 sm:left-4 sm:right-4 z-10 flex flex-wrap gap-1.5 pointer-events-none">
+                        <div className="bg-slate-500 text-white px-2 py-0.5 rounded-md text-[8px] font-black tracking-widest shadow-sm flex items-center gap-1 w-fit border border-slate-600/20 bg-slate-500">
+                          <Trash2 className="w-2.5 h-2.5" /> FUERA DE MERCADO
+                        </div>
                       </div>
 
-                      <div className="p-6 sm:p-8 pt-16 sm:pt-20 flex-grow space-y-6">
-                        <div className="space-y-2 pt-6">
-                          <span className="inline-block text-[9px] font-black tracking-widest text-slate-600 bg-slate-100 px-3 py-1 rounded-full uppercase">
-                            {piso.type || 'Piso'}
-                          </span>
-                          <h3 className="text-base sm:text-lg font-black text-slate-600 leading-snug tracking-tight">
-                            {piso.title}
-                          </h3>
-                        </div>
+                      <div className="p-4 sm:p-5 pt-12 sm:pt-14 flex-grow flex flex-col justify-between space-y-4">
+                        <div className="space-y-3">
+                          <div className="space-y-1.5 pt-2">
+                            <span className="inline-block text-[8px] font-black tracking-widest text-slate-600 bg-slate-100 px-2.5 py-0.5 rounded-full uppercase">
+                              {piso.type || 'Piso'}
+                            </span>
+                            <h3 className="text-sm sm:text-base font-black text-slate-600 leading-snug tracking-tight line-clamp-2">
+                              {piso.title}
+                            </h3>
+                          </div>
 
-                        <div className="flex items-center gap-2 text-slate-400">
-                          <MapPin className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                          <span className="text-xs font-bold truncate leading-none">
-                            {piso.address} {piso.neighborhood && `(${piso.neighborhood})`}
-                          </span>
-                        </div>
+                          <div className="flex items-center gap-1.5 text-slate-400">
+                            <MapPin className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                            <span className="text-xs font-bold truncate leading-none">
+                              {piso.address} {piso.neighborhood && `(${piso.neighborhood})`}
+                            </span>
+                          </div>
 
-                        <div className="grid grid-cols-2 gap-4 py-4 border-y border-slate-100">
-                          <div className="flex items-center gap-3">
-                            <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                          <div className="flex items-center gap-4 text-slate-500 text-xs font-bold bg-slate-50 px-3 py-2 rounded-xl border border-slate-100/60">
+                            <div className="flex items-center gap-1.5">
                               <BedDouble className="w-4 h-4 text-slate-400" />
+                              <span>{piso.rooms || 'N/D'} hab.</span>
                             </div>
-                            <div className="flex flex-col">
-                              <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider leading-none">Habitaciones</span>
-                              <span className="text-xs font-black text-slate-600 mt-1">{piso.rooms || 'N/D'}</span>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-3">
-                            <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                            <div className="w-px h-3 bg-slate-200"></div>
+                            <div className="flex items-center gap-1.5">
                               <Scaling className="w-4 h-4 text-slate-400" />
-                            </div>
-                            <div className="flex flex-col">
-                              <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider leading-none">Superficie</span>
-                              <span className="text-xs font-black text-slate-600 mt-1">{piso.size_m2 ? `${Math.round(piso.size_m2)} m²` : 'N/D'}</span>
+                              <span>{piso.size_m2 ? `${Math.round(piso.size_m2)} m²` : 'N/D'}</span>
                             </div>
                           </div>
-                        </div>
 
-                        {/* PRECIO FINAL REGISTRADO */}
-                        <div className="space-y-4">
-                          <div 
-                            onClick={() => toggleExpandPrice(piso.id)} 
-                            className="flex justify-between items-end bg-slate-50 hover:bg-slate-100 p-4 sm:p-5 rounded-3xl border-2 border-slate-100/50 cursor-pointer transition-all active:scale-[0.98]"
-                          >
+                          {/* DETALLES DE BAJA */}
+                          <div className="grid grid-cols-2 gap-3 py-3 border-y border-slate-100 text-xs">
                             <div className="flex flex-col">
-                              <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Último Precio</span>
-                              <span className="text-lg sm:text-2xl font-black text-slate-500 leading-none mt-1.5 flex items-baseline">
-                                {piso.currentPrice.toLocaleString('es-ES')}€
-                                {piso.pricePerM2 > 0 && (
-                                  <span className="text-[9px] font-bold text-slate-400 ml-1.5 tracking-normal">
-                                    ({piso.pricePerM2.toLocaleString('es-ES')}€/m²)
-                                  </span>
-                                )}
+                              <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider">Publicado</span>
+                              <span className="font-extrabold text-slate-700 mt-0.5">
+                                {piso.created_at ? format(new Date(piso.created_at), "dd/MM/yyyy") : 'N/D'}
                               </span>
                             </div>
-                            <div className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                              <span>HISTORIAL</span>
-                              {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                            <div className="flex flex-col">
+                              <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider">Tiempo en Mercado</span>
+                              <span className="font-extrabold text-slate-700 mt-0.5">
+                                {tiempoMercado}
+                              </span>
+                            </div>
+                            <div className="flex flex-col pt-1.5 border-t border-slate-100/50">
+                              <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider">Precio Original</span>
+                              <span className="font-extrabold text-slate-700 mt-0.5">
+                                {originalPrice.toLocaleString('es-ES')}€
+                              </span>
+                            </div>
+                            <div className="flex flex-col pt-1.5 border-t border-slate-100/50">
+                              <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider">Diferencia con Baja</span>
+                              <span className={`font-extrabold mt-0.5 ${diffVal < 0 ? 'text-emerald-600' : diffVal > 0 ? 'text-rose-600' : 'text-slate-500'}`}>
+                                {diffVal < 0 ? '-' : diffVal > 0 ? '+' : ''}{Math.abs(diffVal).toLocaleString('es-ES')}€
+                                {diffVal !== 0 && ` (${Math.round((diffVal / originalPrice) * 100)}%)`}
+                              </span>
                             </div>
                           </div>
 
-                          {isExpanded && (
-                            <div className="bg-slate-50/50 border border-slate-100 rounded-3xl p-4 sm:p-6 space-y-3 animate-in slide-in-from-top-4 duration-300">
-                              <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest pb-2 border-b border-slate-100/80">Historial de Precios</h4>
-                              {piso.sortedHist.map((h: any, idx: number) => {
-                                const isOriginal = idx === 0
-                                return (
-                                  <div key={h.recorded_at} className="flex justify-between items-center py-2 px-2 rounded-xl hover:bg-white border border-transparent hover:border-slate-100 transition-all">
-                                    <div className="flex flex-col">
-                                      <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
-                                        {format(new Date(h.recorded_at), "dd MMMM yyyy", { locale: es })}
-                                      </span>
-                                      {isOriginal && <span className="text-[8px] font-bold text-slate-500 uppercase mt-0.5">Precio Inicial</span>}
-                                      {!isOriginal && <span className="text-[8px] font-bold text-slate-500 uppercase mt-0.5">Cambio</span>}
-                                    </div>
-                                    <span className="text-sm font-black text-slate-600">
-                                      {h.price.toLocaleString('es-ES')}€
+                          {/* PRECIO FINAL REGISTRADO */}
+                          <div className="space-y-3">
+                            <div 
+                              onClick={() => toggleExpandPrice(piso.id)} 
+                              className="flex justify-between items-end bg-slate-50 hover:bg-slate-100 p-3 sm:p-3.5 rounded-2xl border border-slate-200/60 cursor-pointer transition-all active:scale-[0.98]"
+                            >
+                              <div className="flex flex-col">
+                                <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider">Último Precio</span>
+                                <span className="text-base sm:text-xl font-black text-slate-500 leading-none mt-1 flex items-baseline">
+                                  {piso.currentPrice.toLocaleString('es-ES')}€
+                                  {piso.pricePerM2 > 0 && (
+                                    <span className="text-[9px] font-bold text-slate-400 ml-1.5 tracking-normal">
+                                      ({piso.pricePerM2.toLocaleString('es-ES')}€/m²)
                                     </span>
-                                  </div>
-                                )
-                              })}
+                                  )}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1.5 text-[9px] font-black text-slate-500 uppercase tracking-wider">
+                                <span>HISTORIAL</span>
+                                {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                              </div>
                             </div>
-                          )}
+
+                            {isExpanded && (
+                              <div className="bg-slate-50/50 border border-slate-100 rounded-2xl p-3 sm:p-4 space-y-2.5 animate-in slide-in-from-top-4 duration-300">
+                                <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest pb-1.5 border-b border-slate-100/80">Historial de Precios</h4>
+                                {piso.sortedHist.map((h: any, idx: number) => {
+                                  const isOriginal = idx === 0
+                                  return (
+                                    <div key={h.recorded_at} className="flex justify-between items-center py-1.5 px-2 rounded-lg hover:bg-white border border-transparent hover:border-slate-100 transition-all text-xs">
+                                      <div className="flex flex-col">
+                                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                                          {format(new Date(h.recorded_at), "dd MMMM yyyy", { locale: es })}
+                                        </span>
+                                        {isOriginal && <span className="text-[8px] font-bold text-slate-500 uppercase mt-0.5">Precio Inicial</span>}
+                                        {!isOriginal && <span className="text-[8px] font-bold text-slate-500 uppercase mt-0.5">Cambio</span>}
+                                      </div>
+                                      <span className="text-xs sm:text-sm font-black text-slate-600">
+                                        {h.price.toLocaleString('es-ES')}€
+                                      </span>
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                       
-                      <div className="px-6 py-5 sm:px-8 sm:py-6 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                      <div className="px-4 py-3 sm:px-5 sm:py-3.5 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                          <div className="flex flex-col flex-1 min-w-0 w-full">
-                           <span className="text-[9px] font-black text-rose-600 uppercase tracking-widest mb-0.5">Fecha de Baja / Confirmación de Eliminación</span>
-                           <span className="text-xs font-black text-slate-600 truncate tracking-tight">
-                             {piso.last_seen_at ? `${formatDistanceToNow(new Date(piso.last_seen_at), { addSuffix: true, locale: es })} (${format(new Date(piso.last_seen_at), "dd/MM/yyyy HH:mm")})` : 'Desconocida'}
+                           <span className="text-[8px] font-black text-rose-600 uppercase tracking-widest leading-none">Fecha de Baja</span>
+                           <span className="text-xs font-black text-slate-700 truncate tracking-tight mt-1">
+                             {piso.last_seen_at ? `${formatDistanceToNow(new Date(piso.last_seen_at), { addSuffix: true, locale: es })} (${format(new Date(piso.last_seen_at), "dd/MM/yyyy")})` : 'Desconocida'}
                            </span>
                          </div>
                       </div>
