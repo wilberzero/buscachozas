@@ -596,7 +596,7 @@ export default function ClientDashboard({
               />
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 pb-24">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 pb-24">
               {filteredActiveProperties.length === 0 && (
                 <div className="col-span-full py-48 text-center bg-white rounded-[60px] border-4 border-dashed border-slate-100 shadow-inner flex flex-col items-center justify-center">
                   <div className="bg-slate-50 p-10 rounded-full mb-8 shadow-sm">
@@ -654,7 +654,7 @@ export default function ClientDashboard({
                       </div>
                     </div>
 
-                    <div className="p-4 sm:p-5 pt-20 sm:pt-22 flex-grow space-y-4">
+                    <div className="p-4 sm:p-5 pt-20 sm:pt-22 flex-grow space-y-3">
                       <div className="space-y-1.5">
                         <span className="inline-block text-[8px] font-black tracking-widest text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-full uppercase">
                           {piso.type || 'Piso'}
@@ -784,7 +784,7 @@ export default function ClientDashboard({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 pb-24">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 pb-24">
               {inactiveProperties.length === 0 ? (
                 <div className="col-span-full py-48 text-center bg-white rounded-[60px] border-4 border-dashed border-slate-100 shadow-inner flex flex-col items-center justify-center">
                   <Trash2 className="w-20 h-20 text-slate-200 mb-8 animate-bounce" />
@@ -807,7 +807,7 @@ export default function ClientDashboard({
                         </div>
                       </div>
 
-                      <div className="p-4 sm:p-5 pt-12 sm:pt-14 flex-grow flex flex-col justify-between space-y-4">
+                      <div className="p-4 sm:p-5 pt-12 sm:pt-14 flex-grow flex flex-col justify-between space-y-3">
                         <div className="space-y-3">
                           <div className="space-y-1.5 pt-2">
                             <span className="inline-block text-[8px] font-black tracking-widest text-slate-600 bg-slate-100 px-2.5 py-0.5 rounded-full uppercase">
@@ -988,7 +988,7 @@ export default function ClientDashboard({
 
 
                 {/* 2.5. GRÁFICOS DE EVOLUCIÓN HISTÓRICA */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
                   
                   {/* Evolución del Precio Medio */}
                   <div className="bg-white p-6 sm:p-8 rounded-[40px] shadow-2xl border border-slate-100 flex flex-col space-y-6">
